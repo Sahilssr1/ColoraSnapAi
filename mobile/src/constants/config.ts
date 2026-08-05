@@ -1,10 +1,7 @@
 import { Platform } from 'react-native';
 
-// Standard local development URLs
-// Android Emulator uses 10.0.2.2, iOS Simulator uses localhost
-const LOCAL_IP = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-
-export const API_BASE_URL = `http://${LOCAL_IP}:5000/api/v1`;
+// Live 24/7 Cloud Backend on Render
+export const API_BASE_URL = 'https://colorasnapai.onrender.com/api/v1';
 
 export const GOOGLE_AUTH_CONFIG = {
   webClientId: '523607561287-ck3d4v5gf4rmtr02o9a54jac9coampvh.apps.googleusercontent.com',

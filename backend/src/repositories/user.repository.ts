@@ -16,14 +16,14 @@ export class UserRepository {
     });
   }
 
-  async findByGoogleId(googleId: string): Promise<User | null> {
+  async findByGoogleId(googleId: string): Promise<(User & { goals: Goal | null }) | null> {
     return prisma.user.findUnique({
       where: { googleId },
       include: { goals: true },
     });
   }
 
-  async findByAppleId(appleId: string): Promise<User | null> {
+  async findByAppleId(appleId: string): Promise<(User & { goals: Goal | null }) | null> {
     return prisma.user.findUnique({
       where: { appleId },
       include: { goals: true },
