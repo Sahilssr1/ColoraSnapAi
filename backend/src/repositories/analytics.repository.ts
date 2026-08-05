@@ -32,7 +32,7 @@ export class AnalyticsRepository {
   async upsert(
     userId: string,
     date: Date,
-    data: Prisma.DailyAnalyticsUpdateInput & Prisma.DailyAnalyticsCreateWithoutUserInput
+    data: Prisma.DailyAnalyticsUpdateInput & Partial<Prisma.DailyAnalyticsCreateWithoutUserInput>
   ): Promise<DailyAnalytics> {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);

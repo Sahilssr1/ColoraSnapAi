@@ -8,7 +8,7 @@ export class GoalRepository {
     });
   }
 
-  async upsert(userId: string, data: Prisma.GoalUpdateInput & Prisma.GoalCreateWithoutUserInput): Promise<Goal> {
+  async upsert(userId: string, data: Prisma.GoalUpdateInput & Partial<Prisma.GoalCreateWithoutUserInput>): Promise<Goal> {
     return prisma.goal.upsert({
       where: { userId },
       update: data,
