@@ -30,6 +30,7 @@ export interface AuthResponse {
   tokens: AuthTokens;
 }
 
+export class AuthService {
   private generateAccessToken(user: { id: string; email: string }): string {
     const payload = { userId: user.id, email: user.email };
     return (jwt.sign as any)(payload, env.JWT_ACCESS_SECRET, {
