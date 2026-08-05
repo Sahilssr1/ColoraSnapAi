@@ -106,41 +106,49 @@ export const usePedometer = (initialSteps: number = 0) => {
 
     const startHardwareTracking = async () => {
       try {
-        // Dynamically require expo-sensors to avoid bundling issues on web
-        const ExpoSensors = require('expo-sensors');
-        if (ExpoSensors && ExpoSensors.Accelerometer) {
-          ExpoSensors.Accelerometer.setUpdateInterval(100);
-          setIsSensorTracking(true);
-          setIsPedometerAvailable(true);
+        let ExpoSensors: any = null;
+        try {
+          ExpoSensors = require('expo-sensors');
+        } catch {
+          ExpoSensors = null;
+        }
 
-          subscription = ExpoSensors.Accelerometer.addListener((data: { x: number; y: number; z: number }) => {
-            if (!isSubscribed) return;
+        if (ExpoSensors && ExpoSensors.Accelerometer && typeof ExpoSensors.Accelerometer.isAvailableAsync === 'function') {
+          const available = await ExpoSensors.Accelerometer.isAvailableAsync().catch(() => false);
+          if (available && isSubscribed) {
+            ExpoSensors.Accelerometer.setUpdateInterval(100);
+            setIsSensorTracking(true);
+            setIsPedometerAvailable(true);
 
-            // Calculate 3-axis acceleration vector magnitude
-            const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
-            const now = Date.now();
+            subscription = ExpoSensors.Accelerometer.addListener((data: { x: number; y: number; z: number }) => {
+              if (!isSubscribed) return;
 
-            // Pedometer step detection filter:
-            // Walking footsteps create an acceleration spike (typically > 1.25g)
-            // with a minimum human walking cadence interval of ~280ms
-            if (magnitude > 1.22 && now - lastStepTimeRef.current > 280) {
-              lastStepTimeRef.current = now;
-              setCurrentStepCount((prev) => {
-                const nextCurrent = prev + 1;
-                const nextTotal = pastStepCount + nextCurrent;
+              const magnitude = Math.sqrt((data?.x || 0) ** 2 + (data?.y || 0) ** 2 + (data?.z || 0) ** 2);
+              const now = Date.now();
 
-                // Save locally
-                AsyncStorage.setItem(STORAGE_KEY_STEPS, `${nextTotal}`).catch(() => {});
+              if (magnitude > 1.22 && now - lastStepTimeRef.current > 280) {
+                lastStepTimeRef.current = now;
+                setCurrentStepCount((prev) => {
+                  const nextCurrent = prev + 1;
+                  const nextTotal = pastStepCount + nextCurrent;
 
-                // Auto-sync to PostgreSQL database every 5 steps
-                if (nextTotal - lastSyncCountRef.current >= 5) {
-                  scheduleDbSync(nextTotal);
-                }
+                  AsyncStorage.setItem(STORAGE_KEY_STEPS, `${nextTotal}`).catch(() => {});
 
-                return nextCurrent;
-              });
-            }
-          });
+                  if (nextTotal - lastSyncCountRef.current >= 5) {
+                    scheduleDbSync(nextTotal);
+                  }
+
+                  return nextCurrent;
+                });
+              }
+            });
+          } else {
+            setIsSensorTracking(false);
+            setIsPedometerAvailable(false);
+          }
+        } else {
+          setIsSensorTracking(false);
+          setIsPedometerAvailable(false);
         }
       } catch {
         setIsSensorTracking(false);
@@ -148,7 +156,7 @@ export const usePedometer = (initialSteps: number = 0) => {
       }
     };
 
-    startHardwareTracking();
+    startHardwareTracking().catch(() => {});
 
     return () => {
       isSubscribed = false;

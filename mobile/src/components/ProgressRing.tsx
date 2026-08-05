@@ -33,25 +33,30 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   const center = size / 2;
   const gap = strokeWidth + Math.max(2, size * 0.02);
 
+  const cleanCal = isNaN(calorieProgress) ? 0 : Math.max(0, Math.min(calorieProgress, 1));
+  const cleanProt = isNaN(proteinProgress) ? 0 : Math.max(0, Math.min(proteinProgress, 1));
+  const cleanCarb = isNaN(carbsProgress) ? 0 : Math.max(0, Math.min(carbsProgress, 1));
+  const cleanFat = isNaN(fatProgress) ? 0 : Math.max(0, Math.min(fatProgress, 1));
+
   const baseRings = isActivityRing
     ? [
         {
-          radius: center - strokeWidth / 2 - 2,
-          progress: Math.min(calorieProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - 2),
+          progress: cleanCal,
           color: Colors.macros.calories,
           gradient: ['#FF3B30', '#FF2D55'],
           id: `actMove_${size}`,
         },
         {
-          radius: center - strokeWidth / 2 - gap - 2,
-          progress: Math.min(proteinProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - gap - 2),
+          progress: cleanProt,
           color: Colors.macros.protein,
           gradient: ['#34C759', '#30D158'],
           id: `actExe_${size}`,
         },
         {
-          radius: center - strokeWidth / 2 - gap * 2 - 2,
-          progress: Math.min(carbsProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - gap * 2 - 2),
+          progress: cleanCarb,
           color: Colors.macros.water,
           gradient: ['#007AFF', '#5AC8FA'],
           id: `actStd_${size}`,
@@ -59,29 +64,29 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
       ]
     : [
         {
-          radius: center - strokeWidth / 2 - 2,
-          progress: Math.min(calorieProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - 2),
+          progress: cleanCal,
           color: Colors.macros.calories,
           gradient: ['#FF3B30', '#FF2D55'],
           id: `calGrad_${size}`,
         },
         {
-          radius: center - strokeWidth / 2 - gap - 2,
-          progress: Math.min(proteinProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - gap - 2),
+          progress: cleanProt,
           color: Colors.macros.protein,
           gradient: ['#34C759', '#30D158'],
           id: `protGrad_${size}`,
         },
         {
-          radius: center - strokeWidth / 2 - gap * 2 - 2,
-          progress: Math.min(carbsProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - gap * 2 - 2),
+          progress: cleanCarb,
           color: Colors.macros.carbs,
           gradient: ['#FF9500', '#FFCC00'],
           id: `carbGrad_${size}`,
         },
         {
-          radius: center - strokeWidth / 2 - gap * 3 - 2,
-          progress: Math.min(fatProgress, 1),
+          radius: Math.max(2, center - strokeWidth / 2 - gap * 3 - 2),
+          progress: cleanFat,
           color: Colors.macros.fat,
           gradient: ['#AF52DE', '#5856D6'],
           id: `fatGrad_${size}`,
@@ -104,8 +109,8 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
 
         <G rotation="-90" origin={`${center}, ${center}`}>
           {baseRings.map((ring, idx) => {
-            const circumference = 2 * Math.PI * ring.radius;
-            const strokeDashoffset = circumference * (1 - ring.progress);
+            const circumference = Math.max(1, 2 * Math.PI * ring.radius);
+            const strokeDashoffset = Math.max(0, circumference * (1 - ring.progress));
 
             return (
               <React.Fragment key={`ring-${idx}`}>

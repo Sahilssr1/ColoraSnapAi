@@ -15,13 +15,14 @@ export const MiniScoreGauge: React.FC<MiniScoreGaugeProps> = ({
   strokeWidth = 5,
 }) => {
   const { theme, isDark } = useTheme();
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - Math.min(score, 100) / 100);
+  const safeScore = typeof score === 'number' && !isNaN(score) ? Math.max(0, Math.min(score, 100)) : 90;
+  const radius = Math.max(2, (size - strokeWidth) / 2);
+  const circumference = Math.max(1, 2 * Math.PI * radius);
+  const strokeDashoffset = Math.max(0, circumference * (1 - safeScore / 100));
 
   // Gradient-like color based on score
   const strokeColor =
-    score >= 85 ? '#30D158' : score >= 70 ? '#FFD60A' : '#FF453A';
+    safeScore >= 85 ? '#30D158' : safeScore >= 70 ? '#FFD60A' : '#FF453A';
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
