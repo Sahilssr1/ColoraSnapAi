@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum GoalType {
+  LOSE_WEIGHT
+  MAINTAIN
+  GAIN_WEIGHT
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  VERY_ACTIVE
+  EXTRA_ACTIVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum FoodSource {
+  AI_SCAN
+  BARCODE
+  USDA
+  OPEN_FOOD_FACTS
+  MANUAL
+}
+
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  password       String?
+  name           String
+  avatar         String?
+  height         Float?         // in cm
+  weight         Float?         // in kg
+  age            Int?
+  gender         Gender         @default(OTHER)
+  goal           GoalType       @default(MAINTAIN)
+  activityLevel  ActivityLevel  @default(MODERATE)
+  isEmailVerified Boolean       @default(false)
+  googleId       String?        @unique
+  appleId        String?        @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  goals          Goal?
+  mealLogs       MealLog[]
+  waterLogs      WaterLog[]
+  weightLogs     WeightLog[]
+  refreshTokens  RefreshToken[]
+  favoriteFoods  FavoriteFood[]
+  dailyAnalytics DailyAnalytics[]
+
+  @@map("users")
+}
+
+model Goal {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  targetCalories Float     @default(2000) @map("target_calories")
+  targetProtein  Float     @default(150)  @map("target_protein")  // in grams
+  targetCarbs    Float     @default(200)  @map("target_carbs")    // in grams
+  targetFat      Float     @default(65)   @map("target_fat")      // in grams
+  targetWater    Float     @default(2500) @map("target_water")    // in ml
+  targetFiber    Float     @default(30)   @map("target_fiber")    // in grams
+  targetSodium   Float     @default(2300) @map("target_sodium")   // in mg
+  targetSugar    Float     @default(50)   @map("target_sugar")    // in grams
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+model Food {
+  id              String      @id @default(uuid())
+  name            String
+  brand           String?
+  barcode         String?     @unique
+  image           String?
+  servingSize     Float       @default(100) @map("serving_size") // standard grams or ml
+  servingUnit     String      @default("g") @map("serving_unit")
+  calories        Float       @default(0)
+  protein         Float       @default(0) // g
+  carbs           Float       @default(0) // g
+  fat             Float       @default(0) // g
+  fiber           Float       @default(0) // g
+  sugar           Float       @default(0) // g
+  sodium          Float       @default(0) // mg
+  cholesterol     Float       @default(0) // mg
+  potassium       Float       @default(0) // mg
+  vitaminA        Float       @default(0) @map("vitamin_a") // mcg
+  vitaminB        Float       @default(0) @map("vitamin_b") // mg (B-complex / B12/B6)
+  vitaminC        Float       @default(0) @map("vitamin_c") // mg
+  vitaminD        Float       @default(0) @map("vitamin_d") // mcg
+  vitaminE        Float       @default(0) @map("vitamin_e") // mg
+  vitaminK        Float       @default(0) @map("vitamin_k") // mcg
+  calcium         Float       @default(0) // mg
+  iron            Float       @default(0) // mg
+  magnesium       Float       @default(0) // mg
+  zinc            Float       @default(0) // mg
+  copper          Float       @default(0) // mg
+  phosphorus      Float       @default(0) // mg
+  omega3          Float       @default(0) // g
+  omega6          Float       @default(0) // g
+  waterContent    Float       @default(0) @map("water_content") // % or g
+  glycemicLoad    Float       @default(0) @map("glycemic_load")
+  confidenceScore Float       @default(1.0) @map("confidence_score")
+  source          FoodSource  @default(MANUAL)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  mealLogs        MealLog[]
+  favoriteFoods   FavoriteFood[]
+
+  @@index([name])
+  @@index([barcode])
+  @@map("foods")
+}
+
+model MealLog {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  foodId      String    @map("food_id")
+  mealType    MealType  @map("meal_type")
+  quantity    Float     @default(1) // multiplier of servingSize
+  servingSize Float     @default(100) @map("serving_size")
+  calories    Float     @default(0)
+  protein     Float     @default(0)
+  carbs       Float     @default(0)
+  fat         Float     @default(0)
+  fiber       Float     @default(0)
+  sugar       Float     @default(0)
+  sodium      Float     @default(0)
+  date        DateTime  @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food        Food      @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("meal_logs")
+}
+
+model WaterLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  amount    Float    // in ml
+  date      DateTime @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("water_logs")
+}
+
+model WeightLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  weight    Float    // in kg
+  date      DateTime @db.Date
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("weight_logs")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  revoked   Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model FavoriteFood {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  foodId    String   @map("food_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food      Food     @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, foodId])
+  @@map("favorite_foods")
+}
+
+model DailyAnalytics {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  date            DateTime @db.Date
+  totalCalories   Float    @default(0) @map("total_calories")
+  totalProtein    Float    @default(0) @map("total_protein")
+  totalCarbs      Float    @default(0) @map("total_carbs")
+  totalFat        Float    @default(0) @map("total_fat")
+  totalWater      Float    @default(0) @map("total_water")
+  burnedCalories  Float    @default(0) @map("burned_calories")
+  bmi             Float?
+  bmr             Float?
+  deficiencyFlags Json?    @map("deficiency_flags") // Array of nutrient deficiency alerts
+  excessFlags     Json?    @map("excess_flags")     // Array of nutrient excess alerts
+  aiSummary       String?  @map("ai_summary")       // AI generated personalized daily breakdown
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("daily_analytics")
+}
