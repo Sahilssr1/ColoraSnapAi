@@ -30,10 +30,10 @@ export interface AuthResponse {
   tokens: AuthTokens;
 }
 
-export class AuthService {
   private generateAccessToken(user: { id: string; email: string }): string {
-    return jwt.sign({ userId: user.id, email: user.email }, env.JWT_ACCESS_SECRET, {
-      expiresIn: env.JWT_ACCESS_EXPIRES_IN,
+    const payload = { userId: user.id, email: user.email };
+    return (jwt.sign as any)(payload, env.JWT_ACCESS_SECRET, {
+      expiresIn: env.JWT_ACCESS_EXPIRES_IN || '15m',
     });
   }
 
