@@ -53,9 +53,7 @@ import { MiniScoreGauge } from '../../components/MiniScoreGauge';
 import { GlassCard } from '../../components/GlassCard';
 import { usePedometer } from '../../hooks/usePedometer';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
-export const HomeScreen: React.FC<Props> = ({ navigation }) => {
+export const HomeScreen = ({ navigation }: any) => {
   const { theme, isDark } = useTheme();
   const user = useAppSelector((state) => state.auth.user);
   const [refreshing, setRefreshing] = useState(false);
@@ -179,8 +177,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <AppleHealthHeader
           userName={user?.name || dashboard?.user?.name || 'Calora User'}
           showEdit={true}
-          onEditPress={() => navigation.navigate('Profile')}
-          onProfilePress={() => navigation.navigate('Profile')}
+          onEditPress={() => navigation.navigate('ProfileTab')}
+          onProfilePress={() => navigation.navigate('ProfileTab')}
         />
 
         {/* 1. Activity Metric Card (Move / Exercise / Stand) - Live from DB */}
@@ -207,7 +205,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               isActivityRing={true}
             />
           }
-          onPress={() => navigation.navigate('Analytics')}
+          onPress={() => navigation.navigate('AnalyticsTab')}
         />
 
         {/* 2. Steps Metric Card (Real-Time Hardware Motion Tracking & Auto-DB Sync) */}
@@ -266,7 +264,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               showCenterText={false}
             />
           }
-          onPress={() => navigation.navigate('Analytics')}
+          onPress={() => navigation.navigate('AnalyticsTab')}
         />
 
         {/* 4. Water Hydration Card - Live from DB */}
@@ -300,16 +298,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               )}
             </TouchableOpacity>
           }
-          onPress={() => navigation.navigate('Analytics')}
+          onPress={() => navigation.navigate('AnalyticsTab')}
         />
 
-        {/* 5. Live Database Meals Today */}
         {dashboard?.mealSections && (
-          <GlassCard style={styles.mealsCard} intensity={20}>
+          <GlassCard style={styles.mealsCard}>
             <View style={styles.mealsHeader}>
               <Text style={[styles.mealsTitle, { color: theme.textPrimary }]}>Meals Logged Today</Text>
               <TouchableOpacity
-                onPress={() => navigation.navigate('Search')}
+                onPress={() => navigation.navigate('SearchTab')}
                 style={styles.logFoodBtn}
                 activeOpacity={0.7}
               >
@@ -415,7 +412,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={[styles.okBadgeText, { color: '#34C759' }]}>Verified</Text>
             </View>
           }
-          onPress={() => navigation.navigate('Analytics')}
+          onPress={() => navigation.navigate('AnalyticsTab')}
         />
 
         {/* Bottom Padding for floating tab bar */}
@@ -544,7 +541,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Live Status Card */}
-            <GlassCard style={styles.pedometerStatusCard} intensity={25}>
+            <GlassCard style={styles.pedometerStatusCard}>
               <View style={styles.pedometerStatusRow}>
                 <View style={styles.livePulseContainer}>
                   <View style={[styles.pulseDot, { backgroundColor: isWalkingSimulated || isSensorTracking ? '#34C759' : '#FF9500' }]} />
@@ -678,7 +675,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                       const progressPct = Math.min(100, Math.round((displaySteps / 10000) * 100));
 
                       return (
-                        <View key={item.date} style={[styles.historyRowCard, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+                        <GlassCard key={`history-${idx}`} style={[styles.historyRowCard, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
                           <View style={styles.historyRowTop}>
                             <View>
                               <Text style={[styles.historyDayText, { color: theme.textPrimary }]}>
@@ -710,7 +707,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                               ]}
                             />
                           </View>
-                        </View>
+                        </GlassCard>
                       );
                     })
                 ) : (

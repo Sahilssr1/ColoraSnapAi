@@ -9,7 +9,6 @@ import {
   TextInput,
   Platform,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,6 +30,8 @@ import { apiClient } from '../../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppDispatch } from '../../redux/hooks';
 import { setCredentials } from '../../redux/slices/authSlice';
+import { GOOGLE_AUTH_CONFIG } from '../../constants/config';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -43,9 +44,6 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const [pendingProfile, setPendingProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleModalVisible, setGoogleModalVisible] = useState(false);
-  const [googleEmailInput, setGoogleEmailInput] = useState('');
-  const [googleError, setGoogleError] = useState('');
   const [error, setError] = useState('');
   const dispatch = useAppDispatch();
 
@@ -106,6 +104,37 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setGoogleLoading(true);
+      setError('');
+
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+
+      if (userInfo.user) {
+        await submitGoogleAuthToBackend({
+          id: userInfo.user.id,
+          email: userInfo.user.email,
+          name: userInfo.user.name || name || 'Calora User',
+          picture: userInfo.user.photo || undefined,
+        });
+      }
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        setError(''); // User cancelled
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        setError('Sign in is in progress already');
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setError('Google Play Services not available or outdated');
+      } else {
+        setError(err.message || 'Google sign in failed');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const submitGoogleAuthToBackend = async (googleProfile: {
     id: string;
     email: string;
@@ -114,7 +143,6 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   }) => {
     try {
       setGoogleLoading(true);
-      setGoogleError('');
 
       const res = await apiClient.post('/auth/google', {
         googleId: googleProfile.id,
@@ -135,40 +163,13 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         })
       );
 
-      setGoogleModalVisible(false);
       navigation.replace('MainTabs');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to authenticate Google user with Calora server.';
-      setGoogleError(msg);
+      setError(msg);
     } finally {
       setGoogleLoading(false);
     }
-  };
-
-  const handleQuickGoogleSignIn = async () => {
-    await submitGoogleAuthToBackend({
-      id: `google_${Date.now()}`,
-      email: 'alex.calora@gmail.com',
-      name: 'Alex Calora',
-      picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    });
-  };
-
-  const handleCustomGoogleEmailSignIn = async () => {
-    if (!googleEmailInput || !googleEmailInput.includes('@')) {
-      setGoogleError('Please enter a valid Google email address.');
-      return;
-    }
-    const cleanEmail = googleEmailInput.trim().toLowerCase();
-    const namePart = cleanEmail.split('@')[0];
-    const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-
-    await submitGoogleAuthToBackend({
-      id: `google_${Date.now()}_${namePart}`,
-      email: cleanEmail,
-      name: formattedName,
-      picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    });
   };
 
   return (
@@ -352,16 +353,17 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               styles.googleBtn,
               { backgroundColor: theme.card, borderColor: '#4285F4' },
             ]}
-            onPress={() => {
-              setGoogleError('');
-              setGoogleLoading(false);
-              setGoogleModalVisible(true);
-            }}
+            onPress={handleGoogleSignIn}
+            disabled={googleLoading}
             activeOpacity={0.7}
           >
-            <Text style={[styles.googleBtnText, { color: theme.textPrimary }]}>
-              G Sign Up with Google
-            </Text>
+            {googleLoading ? (
+              <ActivityIndicator size="small" color="#4285F4" />
+            ) : (
+              <Text style={[styles.googleBtnText, { color: theme.textPrimary }]}>
+                G Sign Up with Google
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Trust guarantee */}
@@ -385,127 +387,6 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Google Authentication Modal */}
-      <Modal
-        visible={googleModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => {
-          if (!googleLoading) setGoogleModalVisible(false);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleRow}>
-                <View style={styles.googleIconBadge}>
-                  <Text style={styles.googleIconText}>G</Text>
-                </View>
-                <View>
-                  <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
-                    Google Account
-                  </Text>
-                  <Text style={[styles.modalSubtitle, { color: theme.textMuted }]}>
-                    Create your account instantly with Google
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  if (!googleLoading) setGoogleModalVisible(false);
-                }}
-                style={styles.modalCloseBtn}
-                disabled={googleLoading}
-              >
-                <X color={theme.textMuted} size={20} strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Error in modal */}
-            {googleError ? (
-              <View style={styles.modalErrorContainer}>
-                <Text style={styles.modalErrorText}>{googleError}</Text>
-              </View>
-            ) : null}
-
-            {/* Option 1: 1-Tap Instant Google Sign In */}
-            <TouchableOpacity
-              style={styles.oneTapGoogleBtn}
-              activeOpacity={0.88}
-              onPress={handleQuickGoogleSignIn}
-              disabled={googleLoading}
-            >
-              <LinearGradient
-                colors={['#4285F4', '#34A853']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.oneTapGradient}
-              >
-                {googleLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Sparkles color="#FFFFFF" size={18} strokeWidth={2.5} />
-                    <Text style={styles.oneTapBtnText}>1-Tap Sign Up with Google</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.modalDividerRow}>
-              <View style={[styles.dividerLine, { backgroundColor: theme.separator }]} />
-              <Text style={[styles.dividerText, { color: theme.textMuted }]}>
-                or enter Google email
-              </Text>
-              <View style={[styles.dividerLine, { backgroundColor: theme.separator }]} />
-            </View>
-
-            {/* Option 2: Custom Gmail Input */}
-            <View style={styles.customEmailSection}>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder },
-                ]}
-              >
-                <Mail color={theme.textMuted} size={18} strokeWidth={2} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.textInput, { color: theme.inputText }]}
-                  placeholder="yourname@gmail.com"
-                  placeholderTextColor={theme.textMuted}
-                  value={googleEmailInput}
-                  onChangeText={setGoogleEmailInput}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoCorrect={false}
-                  editable={!googleLoading}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.customGoogleSubmitBtn,
-                  { backgroundColor: theme.card, borderColor: '#4285F4' },
-                ]}
-                onPress={handleCustomGoogleEmailSignIn}
-                disabled={googleLoading}
-                activeOpacity={0.7}
-              >
-                {googleLoading ? (
-                  <ActivityIndicator size="small" color="#4285F4" />
-                ) : (
-                  <Text style={[styles.customGoogleSubmitText, { color: '#4285F4' }]}>
-                    Continue with this Google Email
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -691,112 +572,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   googleBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  googleIconBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#4285F4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleIconText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  modalCloseBtn: {
-    padding: 6,
-    borderRadius: 20,
-  },
-  modalErrorContainer: {
-    backgroundColor: 'rgba(255, 59, 48, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 59, 48, 0.3)',
-  },
-  modalErrorText: {
-    color: '#FF3B30',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  oneTapGoogleBtn: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 18,
-  },
-  oneTapGradient: {
-    flexDirection: 'row',
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  oneTapBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  modalDividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 18,
-    gap: 12,
-  },
-  customEmailSection: {
-    gap: 12,
-  },
-  customGoogleSubmitBtn: {
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  customGoogleSubmitText: {
     fontSize: 14,
     fontWeight: '700',
   },

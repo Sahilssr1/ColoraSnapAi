@@ -43,8 +43,6 @@ import { GlassCard } from '../../components/GlassCard';
 import { MiniSparkline } from '../../components/MiniSparkline';
 import { MiniScoreGauge } from '../../components/MiniScoreGauge';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Search'>;
-
 interface CategoryDetail {
   id: string;
   title: string;
@@ -59,7 +57,7 @@ interface CategoryDetail {
   description: string;
 }
 
-export const SearchScreen: React.FC<Props> = ({ navigation }) => {
+export const SearchScreen = ({ navigation }: any) => {
   const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryDetail | null>(null);

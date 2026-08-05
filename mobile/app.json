@@ -50,7 +50,8 @@
         {
           "photosPermission": "Allow Calora AI to access your photos to analyze meal images."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {

@@ -295,7 +295,7 @@ export const ProfileScreen: React.FC = () => {
                   CALORIE TARGET
                 </Text>
                 <Text style={[styles.bioValue, { color: '#FF3B30' }]}>
-                  {profile?.calorieTarget || 2050} kcal
+                  {profile?.goals?.targetCalories || 2050} kcal
                 </Text>
               </View>
               <View style={styles.bioItem}>

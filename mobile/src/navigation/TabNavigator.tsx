@@ -51,7 +51,7 @@ export const TabNavigator: React.FC = () => {
     >
       {/* 1. Summary (Apple Health Home) */}
       <Tab.Screen
-        name="Home"
+        name="HomeTab"
         component={HomeScreen}
         options={{
           tabBarLabel: 'Summary',
@@ -67,7 +67,7 @@ export const TabNavigator: React.FC = () => {
 
       {/* 2. Search (Apple Health Categories) */}
       <Tab.Screen
-        name="Search"
+        name="SearchTab"
         component={SearchScreen}
         options={{
           tabBarLabel: 'Search',
@@ -115,7 +115,7 @@ export const TabNavigator: React.FC = () => {
 
       {/* 4. Trends / Analytics */}
       <Tab.Screen
-        name="Analytics"
+        name="AnalyticsTab"
         component={AnalyticsScreen}
         options={{
           tabBarLabel: 'Trends',
@@ -131,7 +131,7 @@ export const TabNavigator: React.FC = () => {
 
       {/* 5. Profile / Sharing */}
       <Tab.Screen
-        name="Profile"
+        name="ProfileTab"
         component={ProfileScreen}
         options={{
           tabBarLabel: 'Sharing',

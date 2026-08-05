@@ -18,12 +18,11 @@ import { useDashboardQuery, useTrendsQuery } from '../../api/queries';
 import { GlassCard } from '../../components/GlassCard';
 import { MiniScoreGauge } from '../../components/MiniScoreGauge';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Analytics'>;
 type TimeRange = 'D' | 'W' | 'M' | '6M' | 'Y';
 
 const { width } = Dimensions.get('window');
 
-export const AnalyticsScreen: React.FC<Props> = ({ navigation }) => {
+export const AnalyticsScreen = ({ navigation }: any) => {
   const { theme, isDark } = useTheme();
   const [selectedRange, setSelectedRange] = useState<TimeRange>('W');
 
