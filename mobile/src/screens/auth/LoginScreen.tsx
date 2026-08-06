@@ -31,13 +31,9 @@ import { apiClient } from '../../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppDispatch } from '../../redux/hooks';
 import { setCredentials } from '../../redux/slices/authSlice';
-import { GOOGLE_AUTH_CONFIG } from '../../constants/config';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-
-GoogleSignin.configure({
-  webClientId: GOOGLE_AUTH_CONFIG.webClientId,
-  iosClientId: GOOGLE_AUTH_CONFIG.iosClientId,
-});
+import { signInWithGoogle, statusCodes } from '../../api/googleAuth';
+import { AppLogo } from '../../components/AppLogo';
+import { Colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -61,9 +57,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setLoading(true);
       setError('');
-      const res = await apiClient.post('/auth/login', { email, password });
+
+      const res = await apiClient.post('/auth/login', {
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
       const { user, tokens } = res.data.data;
 
+      // Store tokens and credentials
       await AsyncStorage.setItem('calora_access_token', tokens.accessToken);
       await AsyncStorage.setItem('calora_refresh_token', tokens.refreshToken);
 
@@ -90,16 +92,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       setGoogleLoading(true);
       setError('');
 
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
-
-      if (userInfo.user) {
-        await submitGoogleAuthToBackend({
-          id: userInfo.user.id,
-          email: userInfo.user.email,
-          name: userInfo.user.name || 'Calora User',
-          picture: userInfo.user.photo || undefined,
-        });
+      const profile = await signInWithGoogle();
+      if (profile) {
+        await submitGoogleAuthToBackend(profile);
       }
     } catch (err: any) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -156,7 +151,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const handleComingSoon = (featureName: string) => {
     Alert.alert(
       'Coming Soon',
-      `${featureName} is currently in development and will be available in the next Calora AI update!`,
+      `${featureName} is currently in development and will be available in the next SnapCalora AI update!`,
       [{ text: 'Got it', style: 'default' }]
     );
   };
@@ -192,16 +187,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Hero Title & Calora Badge */}
+        {/* Hero Title & SnapCalora AI Logo */}
         <View style={styles.header}>
-          <LinearGradient
-            colors={['#FF3B30', '#FF2D55']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoBadge}
-          >
-            <Sparkles color="#FFFFFF" size={24} strokeWidth={2.5} />
-          </LinearGradient>
+          <AppLogo size="medium" style={{ marginBottom: 14 }} />
 
           <Text style={[styles.title, { color: theme.textPrimary }]}>
             Welcome Back
@@ -291,8 +279,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 style={[
                   styles.checkbox,
                   {
-                    backgroundColor: rememberMe ? '#FF3B30' : theme.card,
-                    borderColor: rememberMe ? '#FF3B30' : theme.cardBorder,
+                    backgroundColor: rememberMe ? '#22C55E' : theme.card,
+                    borderColor: rememberMe ? '#22C55E' : theme.cardBorder,
                   },
                 ]}
               >
@@ -318,7 +306,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             disabled={loading}
           >
             <LinearGradient
-              colors={['#FF3B30', '#FF2D55']}
+              colors={['#22C55E', '#16A34A']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.signInGradient}

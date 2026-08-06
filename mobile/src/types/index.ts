@@ -188,7 +188,7 @@ export interface StepHistoryResponse {
 }
 
 export interface TrendsData {
-  period: 'week' | 'month';
+  period: 'day' | 'week' | 'month' | '6month' | 'year' | string;
   days: number;
   targetCalories: number;
   averages: {

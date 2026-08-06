@@ -21,93 +21,102 @@ export interface ThemeColors {
   inputBorder: string;
   inputText: string;
   buttonPrimaryText: string;
+  primary: string;
+  secondary: string;
 }
 
 export const AppleHealthThemes: { light: ThemeColors; dark: ThemeColors } = {
   light: {
-    background: '#F2F2F7', // Apple iOS system grouped background
+    background: '#F9FAFB', // ⚪ Light Theme (#F9FAFB)
     card: '#FFFFFF',
     cardElevated: '#FFFFFF',
-    cardBorder: 'rgba(0, 0, 0, 0.04)',
-    textPrimary: '#000000',
-    textSecondary: '#636366',
-    textMuted: '#8E8E93',
-    separator: '#E5E5EA',
-    pillBackground: '#E5E5EA',
-    pillActive: '#FFFFFF',
-    pillActiveText: '#000000',
-    headerGlow: ['rgba(255, 149, 128, 0.35)', 'rgba(255, 204, 153, 0.20)', 'rgba(242, 242, 247, 0)'],
-    tabBarBackground: 'rgba(255, 255, 255, 0.88)',
-    tabBarBorder: 'rgba(0, 0, 0, 0.08)',
-    tabBarActive: '#FF3B30',
-    tabBarInactive: '#8E8E93',
+    cardBorder: 'rgba(17, 24, 39, 0.06)',
+    textPrimary: '#111827', // ⚫ Dark Text (#111827)
+    textSecondary: '#4B5563',
+    textMuted: '#9CA3AF',
+    separator: '#E5E7EB',
+    pillBackground: '#E5E7EB',
+    pillActive: '#22C55E', // 🟢 Primary Green
+    pillActiveText: '#FFFFFF',
+    headerGlow: ['rgba(34, 197, 94, 0.25)', 'rgba(249, 115, 22, 0.15)', 'rgba(249, 250, 251, 0)'],
+    tabBarBackground: 'rgba(255, 255, 255, 0.94)',
+    tabBarBorder: 'rgba(17, 24, 39, 0.08)',
+    tabBarActive: '#22C55E', // 🟢 Primary
+    tabBarInactive: '#9CA3AF',
     glassCard: 'rgba(255, 255, 255, 0.92)',
-    glassBorder: 'rgba(0, 0, 0, 0.06)',
-    inputBackground: '#E5E5EA',
-    inputBorder: 'rgba(0, 0, 0, 0.08)',
-    inputText: '#000000',
+    glassBorder: 'rgba(17, 24, 39, 0.06)',
+    inputBackground: '#F3F4F6',
+    inputBorder: 'rgba(17, 24, 39, 0.10)',
+    inputText: '#111827',
     buttonPrimaryText: '#FFFFFF',
+    primary: '#22C55E', // 🟢 Primary
+    secondary: '#F97316', // 🟠 Secondary
   },
   dark: {
-    background: '#000000', // Apple iOS pure black
-    card: '#1C1C1E', // Apple iOS secondary grouped background
-    cardElevated: '#2C2C2E',
+    background: '#111827', // ⚫ Dark Theme (#111827)
+    card: '#1F2937', // Slate-800 Card on Dark
+    cardElevated: '#374151',
     cardBorder: 'rgba(255, 255, 255, 0.08)',
-    textPrimary: '#FFFFFF',
-    textSecondary: '#AEAEB2',
-    textMuted: '#636366',
-    separator: '#38383A',
-    pillBackground: '#2C2C2E',
-    pillActive: '#636366',
+    textPrimary: '#F9FAFB', // ⚪ Light Text (#F9FAFB)
+    textSecondary: '#D1D5DB',
+    textMuted: '#9CA3AF',
+    separator: '#374151',
+    pillBackground: '#1F2937',
+    pillActive: '#22C55E', // 🟢 Primary Green
     pillActiveText: '#FFFFFF',
-    headerGlow: ['rgba(255, 59, 48, 0.28)', 'rgba(255, 149, 0, 0.15)', 'rgba(0, 0, 0, 0)'],
-    tabBarBackground: 'rgba(28, 28, 30, 0.92)',
-    tabBarBorder: 'rgba(255, 255, 255, 0.12)',
-    tabBarActive: '#FF453A',
-    tabBarInactive: '#8E8E93',
-    glassCard: 'rgba(28, 28, 30, 0.85)',
-    glassBorder: 'rgba(255, 255, 255, 0.10)',
-    inputBackground: '#1C1C1E',
+    headerGlow: ['rgba(34, 197, 94, 0.22)', 'rgba(249, 115, 22, 0.14)', 'rgba(17, 24, 39, 0)'],
+    tabBarBackground: 'rgba(17, 24, 39, 0.95)',
+    tabBarBorder: 'rgba(255, 255, 255, 0.10)',
+    tabBarActive: '#22C55E', // 🟢 Primary
+    tabBarInactive: '#6B7280',
+    glassCard: 'rgba(31, 41, 55, 0.85)',
+    glassBorder: 'rgba(255, 255, 255, 0.08)',
+    inputBackground: '#1F2937',
     inputBorder: 'rgba(255, 255, 255, 0.12)',
-    inputText: '#FFFFFF',
+    inputText: '#F9FAFB',
     buttonPrimaryText: '#FFFFFF',
+    primary: '#22C55E', // 🟢 Primary
+    secondary: '#F97316', // 🟠 Secondary
   },
 };
 
 export const Colors = {
   ...AppleHealthThemes,
+  brand: {
+    primary: '#22C55E', // 🟢 Green
+    primaryGradient: ['#22C55E', '#16A34A'],
+    secondary: '#F97316', // 🟠 Orange
+    secondaryGradient: ['#F97316', '#EA580C'],
+    dark: '#111827', // ⚫ Dark
+    light: '#F9FAFB', // ⚪ Light
+    accent: '#22C55E',
+    gold: '#FBBF24',
+    danger: '#EF4444',
+    success: '#22C55E',
+    warning: '#F97316',
+  },
   macros: {
-    calories: '#FF3B30', // Apple Activity Red
-    caloriesGradient: ['#FF3B30', '#FF2D55'],
-    protein: '#34C759', // Apple Activity Green
-    proteinGradient: ['#34C759', '#30B0C7'],
-    carbs: '#FF9500', // Apple Activity Orange
-    carbsGradient: ['#FF9500', '#FFCC00'],
-    fat: '#AF52DE', // Apple Activity Purple
-    fatGradient: ['#AF52DE', '#5856D6'],
-    water: '#007AFF', // Apple Activity Cyan/Blue
-    waterGradient: ['#007AFF', '#5AC8FA'],
+    calories: '#F97316', // 🟠 Secondary Orange for calories
+    caloriesGradient: ['#F97316', '#EA580C'],
+    protein: '#22C55E', // 🟢 Primary Green for protein
+    proteinGradient: ['#22C55E', '#16A34A'],
+    carbs: '#EAB308', // Amber/Yellow for carbs
+    carbsGradient: ['#EAB308', '#CA8A04'],
+    fat: '#A855F7', // Purple for fats
+    fatGradient: ['#A855F7', '#9333EA'],
+    water: '#06B6D4', // Cyan/Blue for hydration
+    waterGradient: ['#06B6D4', '#0891B2'],
   },
   categories: {
-    activity: '#FF3B30',
-    body: '#FF9500',
-    hearing: '#AF52DE',
-    heart: '#FF2D55',
-    medications: '#007AFF',
-    mental: '#5856D6',
-    mobility: '#FF9500',
-    nutrition: '#34C759',
-    respiratory: '#5AC8FA',
-    sleep: '#5856D6',
-  },
-  brand: {
-    primary: '#FF3B30',
-    primaryGradient: ['#FF3B30', '#FF9500'],
-    secondary: '#34C759',
-    accent: '#007AFF',
-    gold: '#FFD60A',
-    danger: '#FF453A',
-    success: '#30D158',
-    warning: '#FFD60A',
+    activity: '#F97316',
+    body: '#22C55E',
+    hearing: '#A855F7',
+    heart: '#EF4444',
+    medications: '#06B6D4',
+    mental: '#8B5CF6',
+    mobility: '#F97316',
+    nutrition: '#22C55E',
+    respiratory: '#06B6D4',
+    sleep: '#6366F1',
   },
 };

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sun, Moon, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
@@ -21,7 +22,9 @@ export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = ({
   onEditPress,
   onProfilePress,
 }) => {
+  const insets = useSafeAreaInsets();
   const { theme, isDark, themeMode, setTheme } = useTheme();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? 12 : 8);
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(' ');
@@ -63,13 +66,14 @@ export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = ({
       .toUpperCase();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: topInset + 4 }]}>
       {/* Top Apple Health Pastel Gradient Glow */}
       <LinearGradient
         colors={theme.headerGlow}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.gradientHeader}
+        pointerEvents="none"
       />
 
       <View style={styles.content}>

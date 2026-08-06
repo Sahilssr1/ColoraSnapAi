@@ -5,7 +5,7 @@ export class AnalyticsController {
   async getTrends(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
-      const period = (req.query.period as 'week' | 'month') || 'week';
+      const period = (req.query.period as string) || 'week';
       const result = await analyticsService.getTrends(userId, period);
 
       res.status(200).json({

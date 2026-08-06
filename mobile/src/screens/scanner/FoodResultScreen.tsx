@@ -3,11 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { Button } from '../../components/Button';
@@ -18,6 +19,8 @@ import { useLogMealMutation } from '../../api/queries';
 type Props = NativeStackScreenProps<RootStackParamList, 'FoodResult'>;
 
 export const FoodResultScreen: React.FC<Props> = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? 12 : 8);
   const { scanResult, mealType } = route.params;
   const [multiplier, setMultiplier] = useState(1.0);
   const logMealMutation = useLogMealMutation();
@@ -49,19 +52,23 @@ export const FoodResultScreen: React.FC<Props> = ({ navigation, route }) => {
         },
       ]);
     } catch (err: any) {
-      Alert.alert('Error', 'Could not log meal to database.');
+      Alert.alert('Error', 'Could not log meal. Please try again.');
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Top Header */}
         <View style={styles.topHeader}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
           <Text style={styles.screenTitle}>AI Scan Result</Text>
@@ -189,7 +196,7 @@ export const FoodResultScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -327,8 +334,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   portionButtonActive: {
-    borderColor: Colors.brand.primary,
-    backgroundColor: '#1C1622',
+    borderColor: '#22C55E',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
   },
   portionButtonText: {
     color: '#94A3B8',
@@ -359,7 +366,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ingredientDot: {
-    color: '#FF5E3A',
+    color: '#22C55E',
     fontSize: 16,
     marginRight: 6,
   },
@@ -374,15 +381,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   aiExplanationBox: {
-    backgroundColor: 'rgba(138, 35, 135, 0.12)',
+    backgroundColor: 'rgba(34, 197, 94, 0.10)',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(138, 35, 135, 0.25)',
+    borderColor: 'rgba(34, 197, 94, 0.25)',
     marginBottom: 20,
   },
   aiExplanationTitle: {
-    color: '#C084FC',
+    color: '#22C55E',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 4,

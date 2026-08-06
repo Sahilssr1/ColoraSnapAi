@@ -3,11 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassCard } from '../../components/GlassCard';
@@ -19,6 +20,8 @@ import { apiClient } from '../../api/client';
 type Props = NativeStackScreenProps<RootStackParamList, 'FoodDetail'>;
 
 export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? 12 : 8);
   const { food, mealType = 'LUNCH' } = route.params;
   const [multiplier, setMultiplier] = useState(1.0);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -73,15 +76,26 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8 }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>Nutrient Breakdown</Text>
-          <TouchableOpacity style={styles.favButton} onPress={handleToggleFavorite}>
+          <TouchableOpacity
+            style={styles.favButton}
+            onPress={handleToggleFavorite}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
             <Text style={styles.favIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
         </View>
@@ -90,7 +104,7 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <GlassCard elevated style={styles.titleCard}>
           <Text style={styles.foodName}>{food.name}</Text>
           <Text style={styles.foodBrand}>
-            {food.brand || 'Calora Nutrition Database'} • {Math.round(food.servingSize * multiplier)}{' '}
+            {food.brand || 'SnapCalora Nutrition Database'} • {Math.round(food.servingSize * multiplier)}{' '}
             {food.servingUnit}
           </Text>
 
@@ -151,7 +165,7 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           style={styles.logButton}
         />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

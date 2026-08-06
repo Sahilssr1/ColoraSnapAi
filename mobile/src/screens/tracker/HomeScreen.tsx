@@ -72,21 +72,14 @@ export const HomeScreen = ({ navigation }: any) => {
 
   // Steps Activity & History Modal State
   const [stepsModalVisible, setStepsModalVisible] = useState(false);
-  const [manualStepsInput, setManualStepsInput] = useState('2000');
-  const [activeTabInStepsModal, setActiveTabInStepsModal] = useState<'history' | 'add'>('history');
 
-  // Real-time Phone Hardware Step Counter & Auto-DB Sync
+  // Real-time Phone Hardware Step Counter & Auto-Sync
   const dbSteps = dashboard?.steps?.count ?? 0;
   const {
     totalSteps,
     burnedCalories: stepsBurnedCalories,
     distanceKm,
-    isPedometerAvailable,
     isSensorTracking,
-    isWalkingSimulated,
-    toggleWalkSimulation,
-    addSteps,
-    syncStepsToBackend,
   } = usePedometer(dbSteps);
 
   const onRefresh = async () => {
@@ -113,9 +106,13 @@ export const HomeScreen = ({ navigation }: any) => {
   const waterTarget = dashboard?.goals?.targetWater ?? user?.goals?.targetWater ?? 2500;
 
   // Real activity calculations
-  const exerciseMinutes = Math.min(60, Math.round((consumedCalories / 40) + 10));
+  const activeBurnedCalories = stepsBurnedCalories || (dashboard?.steps?.burnedCalories ?? 0);
+  const moveGoal = 400; // 400 active kcal move goal
+  const exerciseMinutes = Math.max(0, Math.round(totalSteps / 100)); // ~100 steps per min active movement
+  const exerciseGoal = 30; // 30 min daily exercise goal
   const currentHour = new Date().getHours();
-  const standHours = Math.min(12, Math.max(1, Math.floor(currentHour * 0.7)));
+  const standHours = Math.min(12, Math.max(1, currentHour >= 7 ? currentHour - 6 : 1));
+  const standGoal = 12; // 12 hours stand goal
   const stepsGoal = 10000;
 
   // Sleep Data from DB
@@ -134,28 +131,9 @@ export const HomeScreen = ({ navigation }: any) => {
     try {
       await logSleepMutation.mutateAsync({ hours });
       setSleepModalVisible(false);
-      Alert.alert('Sleep Logged! 🌙', `Saved ${hours}h sleep to PostgreSQL database!`);
+      Alert.alert('Sleep Logged! 🌙', `Saved ${hours}h sleep!`);
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.message || 'Could not save sleep hours.');
-    }
-  };
-
-  const handleSaveManualSteps = async () => {
-    const stepsToAdd = parseInt(manualStepsInput, 10);
-    if (isNaN(stepsToAdd) || stepsToAdd <= 0) {
-      Alert.alert('Invalid Steps', 'Please enter a valid step count (e.g. 2500)');
-      return;
-    }
-
-    try {
-      const newTotal = totalSteps + stepsToAdd;
-      await logStepsMutation.mutateAsync({ steps: newTotal });
-      addSteps(stepsToAdd);
-      refetchStepHistory();
-      setStepsModalVisible(false);
-      Alert.alert('Steps Synced! 👟', `Added ${stepsToAdd.toLocaleString()} steps! Saved to PostgreSQL database.`);
-    } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.message || 'Could not sync steps.');
     }
   };
 
@@ -175,22 +153,22 @@ export const HomeScreen = ({ navigation }: any) => {
       >
         {/* Top Header: Date, Summary Title & Profile Avatar */}
         <AppleHealthHeader
-          userName={user?.name || dashboard?.user?.name || 'Calora User'}
+          userName={user?.name || dashboard?.user?.name || 'SnapCalora Member'}
           showEdit={true}
           onEditPress={() => navigation.navigate('ProfileTab')}
           onProfilePress={() => navigation.navigate('ProfileTab')}
         />
 
-        {/* 1. Activity Metric Card (Move / Exercise / Stand) - Live from DB */}
+        {/* 1. Activity Metric Card (Move / Exercise / Stand) - Live Motion & DB */}
         <AppleHealthMetricCard
           icon={<Flame color="#FF3B30" size={18} strokeWidth={2.5} />}
           categoryTitle="Activity"
           categoryColor="#FF3B30"
           timestamp={new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          mainValue={`${Math.round(consumedCalories)}`}
+          mainValue={`${Math.round(activeBurnedCalories)}`}
           mainUnit="cal"
           subMetrics={[
-            { label: 'Move', value: `${Math.round(consumedCalories)} cal`, color: '#FF3B30' },
+            { label: 'Move', value: `${Math.round(activeBurnedCalories)} cal`, color: '#FF3B30' },
             { label: 'Exercise', value: `${exerciseMinutes} min`, color: '#34C759' },
             { label: 'Stand', value: `${standHours} hr`, color: '#007AFF' },
           ]}
@@ -198,9 +176,9 @@ export const HomeScreen = ({ navigation }: any) => {
             <ProgressRing
               size={54}
               strokeWidth={5}
-              calorieProgress={targetCalories > 0 ? consumedCalories / targetCalories : 0}
-              proteinProgress={proteinTarget > 0 ? proteinConsumed / proteinTarget : 0}
-              carbsProgress={carbsTarget > 0 ? carbsConsumed / carbsTarget : 0}
+              calorieProgress={moveGoal > 0 ? activeBurnedCalories / moveGoal : 0}
+              proteinProgress={exerciseGoal > 0 ? exerciseMinutes / exerciseGoal : 0}
+              carbsProgress={standGoal > 0 ? standHours / standGoal : 0}
               showCenterText={false}
               isActivityRing={true}
             />
@@ -208,12 +186,12 @@ export const HomeScreen = ({ navigation }: any) => {
           onPress={() => navigation.navigate('AnalyticsTab')}
         />
 
-        {/* 2. Steps Metric Card (Real-Time Hardware Motion Tracking & Auto-DB Sync) */}
+        {/* 2. Steps Metric Card (Real-Time Motion Sensor Tracking) */}
         <AppleHealthMetricCard
           icon={<Footprints color="#FF9500" size={18} strokeWidth={2.5} />}
           categoryTitle="Steps"
           categoryColor="#FF9500"
-          timestamp={isWalkingSimulated ? "Walk Sim Active" : isSensorTracking ? "Live Sensor" : "Today"}
+          timestamp={isSensorTracking ? "Live Sensor" : "Today"}
           mainValue={totalSteps.toLocaleString()}
           mainUnit="steps"
           statusLabel={`Goal: ${stepsGoal.toLocaleString()} • ${stepsBurnedCalories} kcal • ${distanceKm} km`}
@@ -444,7 +422,7 @@ export const HomeScreen = ({ navigation }: any) => {
             </View>
 
             <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
-              Enter how many hours you slept last night. Calora AI will calculate your clinical sleep score (0–100) and save it directly to the database.
+              Enter how many hours you slept last night. SnapCalora Ai will calculate your clinical sleep score (0–100) and update your recovery metrics.
             </Text>
 
             {/* Quick Selector Pills */}
@@ -507,7 +485,7 @@ export const HomeScreen = ({ navigation }: any) => {
               ) : (
                 <>
                   <Sparkles color="#FFFFFF" size={18} style={{ marginRight: 6 }} />
-                  <Text style={styles.saveSleepBtnText}>Save Sleep to Database</Text>
+                  <Text style={styles.saveSleepBtnText}>Save Sleep Entry</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -540,37 +518,19 @@ export const HomeScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
 
-            {/* Live Status Card */}
+            {/* Live Motion Sensor Status Card */}
             <GlassCard style={styles.pedometerStatusCard}>
               <View style={styles.pedometerStatusRow}>
                 <View style={styles.livePulseContainer}>
-                  <View style={[styles.pulseDot, { backgroundColor: isWalkingSimulated || isSensorTracking ? '#34C759' : '#FF9500' }]} />
-                  <Text style={[styles.pulseText, { color: isWalkingSimulated || isSensorTracking ? '#34C759' : '#FF9500' }]}>
-                    {isWalkingSimulated ? 'Walk Sim Active (Counting...)' : isSensorTracking ? 'Live Motion Sensor Active' : 'Sensor Ready'}
+                  <View style={[styles.pulseDot, { backgroundColor: isSensorTracking ? '#34C759' : '#FF9500' }]} />
+                  <Text style={[styles.pulseText, { color: isSensorTracking ? '#34C759' : '#FF9500' }]}>
+                    {isSensorTracking ? 'Live Motion Sensor Active' : 'Motion Sensor Active'}
                   </Text>
                 </View>
-
-                {/* Walk Simulation Toggle */}
-                <TouchableOpacity
-                  style={[
-                    styles.simToggleBtn,
-                    { backgroundColor: isWalkingSimulated ? '#FF3B30' : 'rgba(255, 149, 0, 0.15)' },
-                  ]}
-                  onPress={toggleWalkSimulation}
-                  activeOpacity={0.7}
-                >
-                  {isWalkingSimulated ? (
-                    <>
-                      <Square color="#FFFFFF" size={12} fill="#FFFFFF" style={{ marginRight: 4 }} />
-                      <Text style={[styles.simToggleText, { color: '#FFFFFF' }]}>Stop Sim</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Play color="#FF9500" size={12} fill="#FF9500" style={{ marginRight: 4 }} />
-                      <Text style={[styles.simToggleText, { color: '#FF9500' }]}>Simulate Walk</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={[styles.sensorActivePill, { backgroundColor: 'rgba(52, 199, 89, 0.12)' }]}>
+                  <Activity color="#34C759" size={13} strokeWidth={2.2} style={{ marginRight: 4 }} />
+                  <Text style={{ color: '#34C759', fontSize: 11, fontWeight: '700' }}>Auto-Tracking</Text>
+                </View>
               </View>
 
               {/* Today's Step Hero Number */}
@@ -606,192 +566,71 @@ export const HomeScreen = ({ navigation }: any) => {
               </View>
             </GlassCard>
 
-            {/* Modal Segment Tab: Previous Days History vs Add Steps */}
-            <View style={[styles.modalTabBar, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-              <TouchableOpacity
-                style={[
-                  styles.modalTabBtn,
-                  activeTabInStepsModal === 'history' && {
-                    backgroundColor: isDark ? '#3A3A3C' : '#FFFFFF',
-                  },
-                ]}
-                onPress={() => setActiveTabInStepsModal('history')}
-                activeOpacity={0.7}
-              >
-                <Calendar color={activeTabInStepsModal === 'history' ? '#FF9500' : theme.textMuted} size={14} style={{ marginRight: 6 }} />
-                <Text
-                  style={[
-                    styles.modalTabBtnText,
-                    {
-                      color: activeTabInStepsModal === 'history' ? theme.textPrimary : theme.textMuted,
-                      fontWeight: activeTabInStepsModal === 'history' ? '700' : '500',
-                    },
-                  ]}
-                >
-                  Previous Days (PostgreSQL)
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modalTabBtn,
-                  activeTabInStepsModal === 'add' && {
-                    backgroundColor: isDark ? '#3A3A3C' : '#FFFFFF',
-                  },
-                ]}
-                onPress={() => setActiveTabInStepsModal('add')}
-                activeOpacity={0.7}
-              >
-                <Plus color={activeTabInStepsModal === 'add' ? '#FF9500' : theme.textMuted} size={14} style={{ marginRight: 6 }} />
-                <Text
-                  style={[
-                    styles.modalTabBtnText,
-                    {
-                      color: activeTabInStepsModal === 'add' ? theme.textPrimary : theme.textMuted,
-                      fontWeight: activeTabInStepsModal === 'add' ? '700' : '500',
-                    },
-                  ]}
-                >
-                  Add / Sync
-                </Text>
-              </TouchableOpacity>
+            {/* Section Header: Past Days History */}
+            <View style={{ marginTop: 14, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={[styles.historyListTitle, { color: theme.textMuted, marginBottom: 0 }]}>
+                PAST 7 DAYS ACTIVITY
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: theme.textMuted }}>
+                Previous Walks
+              </Text>
             </View>
 
-            {/* TAB 1: Previous Days History */}
-            {activeTabInStepsModal === 'history' && (
-              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
-                <Text style={[styles.historyListTitle, { color: theme.textMuted }]}>
-                  PAST 7 DAYS RECORDED IN DATABASE
-                </Text>
+            {/* Previous Days History List */}
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {stepHistoryData?.stepHistory && stepHistoryData.stepHistory.length > 0 ? (
+                stepHistoryData.stepHistory
+                  .slice()
+                  .reverse()
+                  .map((item, idx) => {
+                    const isToday = idx === 0;
+                    const displaySteps = isToday ? Math.max(item.steps, totalSteps) : item.steps;
+                    const displayCals = isToday ? Math.max(item.burnedCalories, stepsBurnedCalories) : item.burnedCalories;
+                    const progressPct = Math.min(100, Math.round((displaySteps / 10000) * 100));
 
-                {stepHistoryData?.stepHistory && stepHistoryData.stepHistory.length > 0 ? (
-                  stepHistoryData.stepHistory
-                    .slice()
-                    .reverse()
-                    .map((item, idx) => {
-                      const isToday = idx === 0;
-                      const displaySteps = isToday ? Math.max(item.steps, totalSteps) : item.steps;
-                      const displayCals = isToday ? Math.max(item.burnedCalories, stepsBurnedCalories) : item.burnedCalories;
-                      const progressPct = Math.min(100, Math.round((displaySteps / 10000) * 100));
-
-                      return (
-                        <GlassCard key={`history-${idx}`} style={[styles.historyRowCard, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-                          <View style={styles.historyRowTop}>
-                            <View>
-                              <Text style={[styles.historyDayText, { color: theme.textPrimary }]}>
-                                {isToday ? 'Today' : `${item.day} • ${item.date}`}
-                              </Text>
-                              <Text style={[styles.historySubText, { color: theme.textMuted }]}>
-                                {displayCals} kcal burned
-                              </Text>
-                            </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                              <Text style={[styles.historyStepCount, { color: '#FF9500' }]}>
-                                {displaySteps.toLocaleString()} <Text style={{ fontSize: 13, color: theme.textMuted }}>steps</Text>
-                              </Text>
-                              {displaySteps >= 10000 && (
-                                <Text style={styles.goalAchievedBadge}>✓ Goal Reached</Text>
-                              )}
-                            </View>
+                    return (
+                      <GlassCard key={`history-${idx}`} style={[styles.historyRowCard, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+                        <View style={styles.historyRowTop}>
+                          <View>
+                            <Text style={[styles.historyDayText, { color: theme.textPrimary }]}>
+                              {isToday ? 'Today' : `${item.day} • ${item.date}`}
+                            </Text>
+                            <Text style={[styles.historySubText, { color: theme.textMuted }]}>
+                              {displayCals} kcal burned
+                            </Text>
                           </View>
-
-                          {/* Progress Bar */}
-                          <View style={[styles.historyProgressBarBg, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
-                            <View
-                              style={[
-                                styles.historyProgressBarFill,
-                                {
-                                  width: `${progressPct}%`,
-                                  backgroundColor: displaySteps >= 10000 ? '#34C759' : '#FF9500',
-                                },
-                              ]}
-                            />
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={[styles.historyStepCount, { color: '#FF9500' }]}>
+                              {displaySteps.toLocaleString()} <Text style={{ fontSize: 13, color: theme.textMuted }}>steps</Text>
+                            </Text>
+                            {displaySteps >= 10000 && (
+                              <Text style={styles.goalAchievedBadge}>✓ Goal Reached</Text>
+                            )}
                           </View>
-                        </GlassCard>
-                      );
-                    })
-                ) : (
-                  <View style={{ padding: 20, alignItems: 'center' }}>
-                    <ActivityIndicator color="#FF9500" />
-                    <Text style={{ color: theme.textMuted, marginTop: 8 }}>Loading step records from database...</Text>
-                  </View>
-                )}
-              </ScrollView>
-            )}
+                        </View>
 
-            {/* TAB 2: Manual Add / Sync */}
-            {activeTabInStepsModal === 'add' && (
-              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
-                <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
-                  Manually add steps from an external pedometer or fitness watch to sync with PostgreSQL:
-                </Text>
-
-                {/* Quick Selector Pills */}
-                <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Quick Presets</Text>
-                <View style={styles.pillsContainer}>
-                  {['1000', '2500', '5000', '10000'].map((val) => (
-                    <TouchableOpacity
-                      key={val}
-                      onPress={() => setManualStepsInput(val)}
-                      style={[
-                        styles.pillBtn,
-                        {
-                          backgroundColor:
-                            manualStepsInput === val
-                              ? '#FF9500'
-                              : isDark
-                              ? '#2C2C2E'
-                              : '#F2F2F7',
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.pillBtnText,
-                          { color: manualStepsInput === val ? '#FFFFFF' : theme.textPrimary },
-                        ]}
-                      >
-                        +{parseInt(val).toLocaleString()}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        {/* Progress Bar */}
+                        <View style={[styles.historyProgressBarBg, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                          <View
+                            style={[
+                              styles.historyProgressBarFill,
+                              {
+                                width: `${progressPct}%`,
+                                backgroundColor: displaySteps >= 10000 ? '#34C759' : '#FF9500',
+                              },
+                            ]}
+                          />
+                        </View>
+                      </GlassCard>
+                    );
+                  })
+              ) : (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <ActivityIndicator color="#FF9500" />
+                  <Text style={{ color: theme.textMuted, marginTop: 8 }}>Loading step records...</Text>
                 </View>
-
-                {/* Custom Input */}
-                <Text style={[styles.inputLabel, { color: theme.textMuted, marginTop: 16 }]}>
-                  Steps to Add
-                </Text>
-                <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-                  <Footprints color="#FF9500" size={18} style={{ marginRight: 8 }} />
-                  <TextInput
-                    value={manualStepsInput}
-                    onChangeText={setManualStepsInput}
-                    keyboardType="numeric"
-                    placeholder="2000"
-                    placeholderTextColor={theme.textMuted}
-                    style={[styles.numericInput, { color: theme.textPrimary }]}
-                  />
-                  <Text style={{ color: theme.textMuted, fontWeight: '600' }}>steps</Text>
-                </View>
-
-                {/* Save Button */}
-                <TouchableOpacity
-                  onPress={handleSaveManualSteps}
-                  disabled={logStepsMutation.isPending}
-                  style={[styles.saveSleepBtn, { backgroundColor: '#FF9500' }]}
-                  activeOpacity={0.8}
-                >
-                  {logStepsMutation.isPending ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Footprints color="#FFFFFF" size={18} style={{ marginRight: 6 }} />
-                      <Text style={styles.saveSleepBtnText}>Sync to PostgreSQL DB</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
-            )}
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -991,16 +830,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  simToggleBtn: {
+  sensorActivePill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
-  },
-  simToggleText: {
-    fontSize: 11,
-    fontWeight: '700',
   },
   stepHeroBlock: {
     flexDirection: 'row',
@@ -1041,23 +876,6 @@ const styles = StyleSheet.create({
   stepMetricLabel: {
     fontSize: 11,
     marginTop: 2,
-  },
-  modalTabBar: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    padding: 3,
-    marginBottom: 12,
-  },
-  modalTabBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 9,
-  },
-  modalTabBtnText: {
-    fontSize: 12,
   },
   historyListTitle: {
     fontSize: 11,

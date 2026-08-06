@@ -66,7 +66,7 @@ export const Button: React.FC<ButtonProps> = ({
         style={[styles.baseButton, { height: getButtonHeight(), opacity: disabled ? 0.6 : 1 }, style]}
       >
         <LinearGradient
-          colors={['#FF3B30', '#FF9500']}
+          colors={['#22C55E', '#16A34A']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.gradientContainer, { height: getButtonHeight() }]}
@@ -91,7 +91,7 @@ export const Button: React.FC<ButtonProps> = ({
       case 'secondary':
         return {
           container: {
-            backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA',
+            backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
             borderWidth: 1,
             borderColor: theme.cardBorder,
           },
@@ -102,18 +102,18 @@ export const Button: React.FC<ButtonProps> = ({
           container: {
             backgroundColor: 'transparent',
             borderWidth: 1.5,
-            borderColor: '#FF3B30',
+            borderColor: '#22C55E',
           },
-          text: { color: '#FF3B30' },
+          text: { color: '#22C55E' },
         };
       case 'danger':
         return {
           container: {
-            backgroundColor: isDark ? 'rgba(255, 69, 58, 0.15)' : '#FFEBEA',
+            backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
             borderWidth: 1,
-            borderColor: '#FF453A',
+            borderColor: '#EF4444',
           },
-          text: { color: '#FF453A' },
+          text: { color: '#EF4444' },
         };
       case 'ghost':
       default:

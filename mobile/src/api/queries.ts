@@ -15,7 +15,7 @@ export const useDashboardQuery = (date?: string) => {
   });
 };
 
-export const useTrendsQuery = (period: 'week' | 'month' = 'week') => {
+export const useTrendsQuery = (period: string = 'week') => {
   return useQuery<TrendsData>({
     queryKey: ['analytics', period],
     queryFn: async () => {

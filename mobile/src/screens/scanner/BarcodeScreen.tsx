@@ -7,7 +7,9 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,6 +20,7 @@ import { Colors } from '../../theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'Barcode'>;
 
 export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const mealType = route.params?.mealType || 'LUNCH';
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
@@ -93,8 +96,8 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
         onBarcodeScanned={isScanning ? undefined : handleBarcodeScanned}
       >
         <SafeAreaView style={styles.overlay}>
-          {/* Top Bar */}
-          <View style={styles.topBar}>
+          {/* Top Bar with Safe Insets */}
+          <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 14 : 8) }]}>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => navigation.goBack()}
@@ -122,12 +125,12 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={[styles.corner, styles.bottomLeft]} />
               <View style={[styles.corner, styles.bottomRight]} />
 
-              {/* Red Laser Line */}
+              {/* Laser Line */}
               <View style={styles.laserLine} />
 
               {isScanning && (
                 <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="large" color="#38EF7D" />
+                  <ActivityIndicator size="large" color="#22C55E" />
                   <Text style={styles.loadingText}>Looking up product data...</Text>
                 </View>
               )}

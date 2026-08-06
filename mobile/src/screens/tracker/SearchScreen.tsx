@@ -12,6 +12,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Search as SearchIcon,
@@ -58,7 +59,9 @@ interface CategoryDetail {
 }
 
 export const SearchScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? 12 : 8);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryDetail | null>(null);
   const [logWeightInput, setLogWeightInput] = useState('');
@@ -215,7 +218,7 @@ export const SearchScreen = ({ navigation }: any) => {
         { label: 'Distance', value: `${((dashboard?.steps?.count || 0) * 0.000762).toFixed(2)} km`, color: '#34C759' },
       ],
       sparklineData: [4500, 6200, 8100, 9400, 7800, 10200, dashboard?.steps?.count || 0],
-      description: 'Tracks real-time footsteps from phone motion sensors and syncs automatically to PostgreSQL.',
+      description: 'Tracks real-time footsteps from phone motion sensors and syncs your daily activity automatically.',
     },
     mobility: {
       id: 'mobility',
@@ -294,26 +297,26 @@ export const SearchScreen = ({ navigation }: any) => {
     }
   };
 
-  const handleSaveSleepToDatabase = async () => {
+  const handleLogSleep = async () => {
     const hours = parseFloat(logSleepHoursInput);
     if (isNaN(hours) || hours <= 0 || hours > 24) {
-      Alert.alert('Invalid Hours', 'Please enter valid sleep hours (e.g. 7.5).');
+      Alert.alert('Invalid Input', 'Please enter valid sleep hours (e.g. 7.5).');
       return;
     }
     try {
       setIsLoggingSleep(true);
       await logSleepMutation.mutateAsync({ hours });
       await refetchDashboard();
-      Alert.alert('Sleep Logged! 🌙', `Saved ${hours}h sleep to PostgreSQL database!`);
+      Alert.alert('Sleep Logged! 🌙', `Saved ${hours}h sleep!`);
       setSelectedCategory(null);
     } catch {
-      Alert.alert('Error', 'Failed to save sleep entry to database.');
+      Alert.alert('Error', 'Failed to save sleep entry.');
     } finally {
       setIsLoggingSleep(false);
     }
   };
 
-  const handleSaveWeightToDatabase = async () => {
+  const handleSaveWeight = async () => {
     const w = parseFloat(logWeightInput);
     if (isNaN(w) || w <= 20 || w >= 300) {
       Alert.alert('Invalid Weight', 'Please enter a valid weight in kg.');
@@ -323,11 +326,11 @@ export const SearchScreen = ({ navigation }: any) => {
       setIsLoggingWeight(true);
       await apiClient.post('/weight', { weight: w });
       await refetchDashboard();
-      Alert.alert('Saved', `Logged ${w} kg to your database profile!`);
+      Alert.alert('Saved', `Logged ${w} kg to your health profile!`);
       setLogWeightInput('');
       setSelectedCategory(null);
     } catch {
-      Alert.alert('Error', 'Failed to save weight entry to database.');
+      Alert.alert('Error', 'Failed to save weight entry.');
     } finally {
       setIsLoggingWeight(false);
     }
@@ -340,10 +343,10 @@ export const SearchScreen = ({ navigation }: any) => {
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topInset + 8 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Large Apple Health Title */}
@@ -374,11 +377,11 @@ export const SearchScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Live Search Results from Database */}
+        {/* Live Search Results */}
         {searchQuery.trim().length > 1 ? (
           <View style={styles.resultsContainer}>
             <Text style={[styles.sectionHeader, { color: theme.textPrimary }]}>
-              Food Database Results
+              Matching Foods
             </Text>
 
             {searchResults && searchResults.length > 0 ? (
@@ -460,7 +463,7 @@ export const SearchScreen = ({ navigation }: any) => {
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedCategory(null)}
       >
-        <SafeAreaView style={[styles.modalSafeArea, { backgroundColor: theme.background }]}>
+        <View style={[styles.modalSafeArea, { backgroundColor: theme.background }]}>
           {selectedCategory && (
             <ScrollView
               style={styles.modalScrollView}
@@ -532,11 +535,11 @@ export const SearchScreen = ({ navigation }: any) => {
                 ))}
               </GlassCard>
 
-              {/* Custom Database Action for Body Measurements */}
+              {/* Custom Action for Body Measurements */}
               {selectedCategory.id === 'body' && (
                 <GlassCard style={styles.logWeightCard}>
                   <Text style={[styles.logWeightTitle, { color: theme.textPrimary }]}>
-                    Log New Weight (Database Sync)
+                    Log New Weight
                   </Text>
                   <View style={styles.logWeightRow}>
                     <TextInput
@@ -562,14 +565,14 @@ export const SearchScreen = ({ navigation }: any) => {
                       {isLoggingWeight ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.logWeightBtnText}>Save to DB</Text>
+                        <Text style={styles.logWeightBtnText}>Save</Text>
                       )}
                     </TouchableOpacity>
                   </View>
                 </GlassCard>
               )}
 
-              {/* Log Sleep directly into Database */}
+              {/* Log Sleep directly */}
               {selectedCategory.id === 'sleep' && (
                 <GlassCard style={styles.logWeightCard}>
                   <Text style={[styles.logWeightTitle, { color: theme.textPrimary }]}>
@@ -599,7 +602,7 @@ export const SearchScreen = ({ navigation }: any) => {
                       {isLoggingSleep ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.logWeightBtnText}>Save to DB</Text>
+                        <Text style={styles.logWeightBtnText}>Save</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -646,9 +649,9 @@ export const SearchScreen = ({ navigation }: any) => {
               <View style={{ height: 40 }} />
             </ScrollView>
           )}
-        </SafeAreaView>
+        </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

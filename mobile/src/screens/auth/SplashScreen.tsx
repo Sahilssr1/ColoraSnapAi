@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,7 +7,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { apiClient } from '../../api/client';
 import { useAppDispatch } from '../../redux/hooks';
 import { setCredentials, setAuthLoading } from '../../redux/slices/authSlice';
-import { Colors } from '../../theme/colors';
+import { AppLogo } from '../../components/AppLogo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -54,60 +54,54 @@ export const SplashScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   return (
-    <LinearGradient
-      colors={['#090A0F', '#181124', '#090A0F']}
-      style={styles.container}
-    >
-      <View style={styles.logoContainer}>
-        <LinearGradient
-          colors={Colors.brand.primaryGradient as [string, string]}
-          style={styles.logoIcon}
-        >
-          <Text style={styles.logoEmoji}>🔥</Text>
-        </LinearGradient>
+    <View style={styles.container}>
+      {/* Top Header Glow */}
+      <LinearGradient
+        colors={['rgba(34, 197, 94, 0.22)', 'rgba(249, 115, 22, 0.12)', 'rgba(249, 250, 251, 0)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topAura}
+        pointerEvents="none"
+      />
 
-        <Text style={styles.appName}>Calora AI</Text>
-        <Text style={styles.tagline}>Smart Nutrition & Visual Calorie AI</Text>
+      <View style={styles.centerContent}>
+        <AppLogo
+          size="xlarge"
+          showText={true}
+          showTagline={true}
+        />
       </View>
-    </LinearGradient>
+
+      {/* Subtle loader */}
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#22C55E" />
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F9FAFB', // ⚪ Clean Light theme #F9FAFB
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoContainer: {
-    alignItems: 'center',
+  topAura: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
   },
-  logoIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 26,
+  centerContent: {
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  footerLoader: {
+    position: 'absolute',
+    bottom: 50,
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#FF5E3A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  logoEmoji: {
-    fontSize: 44,
-  },
-  appName: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '500',
-    marginTop: 6,
+    justifyContent: 'center',
   },
 });

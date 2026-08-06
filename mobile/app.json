@@ -1,28 +1,28 @@
 {
   "expo": {
-    "name": "Calora AI - Nutrition & Health Tracker",
+    "name": "SnapCalora AI",
     "slug": "calora-ai",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#F9FAFB"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.calora.ai",
       "infoPlist": {
-        "NSCameraUsageDescription": "Calora AI requires camera access to scan your meals and barcodes.",
-        "NSPhotoLibraryUsageDescription": "Calora AI requires photo library access to analyze food pictures.",
-        "NSMotionUsageDescription": "Calora AI uses motion sensors to track your daily steps."
+        "NSCameraUsageDescription": "SnapCalora AI requires camera access to scan your meals and barcodes.",
+        "NSPhotoLibraryUsageDescription": "SnapCalora AI requires photo library access to analyze food pictures.",
+        "NSMotionUsageDescription": "SnapCalora AI uses motion sensors to track your daily steps."
       }
     },
     "android": {
       "package": "com.calora.ai",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#000000"
+        "backgroundColor": "#F9FAFB"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -42,13 +42,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Calora AI to access your camera for food & barcode recognition."
+          "cameraPermission": "Allow SnapCalora Ai to access your camera for food & barcode recognition."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Calora AI to access your photos to analyze meal images."
+          "photosPermission": "Allow SnapCalora Ai to access your photos to analyze meal images."
         }
       ],
       "@react-native-google-signin/google-signin"

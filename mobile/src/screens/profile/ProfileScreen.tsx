@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Smartphone,
   Sun,
@@ -32,6 +33,7 @@ import { useNavigation } from '@react-navigation/native';
 import { GoalType } from '../../types';
 
 export const ProfileScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const dispatch = useAppDispatch();
   const { theme, isDark, themeMode, setTheme } = useTheme();
@@ -119,7 +121,10 @@ export const ProfileScreen: React.FC = () => {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 16 : 12) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Large Header */}
@@ -130,17 +135,17 @@ export const ProfileScreen: React.FC = () => {
         {/* User Badge Card */}
         <GlassCard style={styles.userCard}>
           <View style={styles.userRow}>
-            <View style={[styles.avatar, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+            <View style={[styles.avatar, { backgroundColor: isDark ? '#1F2937' : '#E5E7EB' }]}>
               <Text style={[styles.avatarText, { color: theme.textPrimary }]}>
-                {user?.name?.slice(0, 2).toUpperCase() || 'CU'}
+                {user?.name?.slice(0, 2).toUpperCase() || 'SC'}
               </Text>
             </View>
             <View style={styles.userInfo}>
               <Text style={[styles.userName, { color: theme.textPrimary }]}>
-                {user?.name || 'Calora Health User'}
+                {user?.name || 'SnapCalora Member'}
               </Text>
               <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-                {user?.email || 'user@calora.ai'}
+                {user?.email || 'user@snapcalora.ai'}
               </Text>
             </View>
           </View>
@@ -319,8 +324,8 @@ export const ProfileScreen: React.FC = () => {
           onPress={handleLogout}
           activeOpacity={0.7}
         >
-          <LogOut color="#FF3B30" size={18} strokeWidth={2.2} style={{ marginRight: 8 }} />
-          <Text style={styles.logoutBtnText}>Sign Out of Calora AI</Text>
+          <LogOut color="#EF4444" size={18} strokeWidth={2.2} style={{ marginRight: 8 }} />
+          <Text style={styles.logoutBtnText}>Sign Out of SnapCalora AI</Text>
         </TouchableOpacity>
 
         <View style={{ height: 110 }} />

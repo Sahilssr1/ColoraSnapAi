@@ -30,8 +30,9 @@ import { apiClient } from '../../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppDispatch } from '../../redux/hooks';
 import { setCredentials } from '../../redux/slices/authSlice';
-import { GOOGLE_AUTH_CONFIG } from '../../constants/config';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { signInWithGoogle, statusCodes } from '../../api/googleAuth';
+import { AppLogo } from '../../components/AppLogo';
+import { Colors } from '../../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -109,15 +110,13 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       setGoogleLoading(true);
       setError('');
 
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
-
-      if (userInfo.user) {
+      const profile = await signInWithGoogle();
+      if (profile) {
         await submitGoogleAuthToBackend({
-          id: userInfo.user.id,
-          email: userInfo.user.email,
-          name: userInfo.user.name || name || 'Calora User',
-          picture: userInfo.user.photo || undefined,
+          id: profile.id,
+          email: profile.email,
+          name: profile.name || name || 'Calora User',
+          picture: profile.picture,
         });
       }
     } catch (err: any) {
@@ -203,22 +202,15 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Hero Title & Calora Badge */}
+        {/* Hero Title & SnapCalora AI Logo */}
         <View style={styles.header}>
-          <LinearGradient
-            colors={['#FF3B30', '#FF2D55']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoBadge}
-          >
-            <Sparkles color="#FFFFFF" size={24} strokeWidth={2.5} />
-          </LinearGradient>
+          <AppLogo size="medium" style={{ marginBottom: 14 }} />
 
           <Text style={[styles.title, { color: theme.textPrimary }]}>
             Create Account
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Set up your Calora profile to start logging with visual AI precision
+            Set up your SnapCalora AI profile to start logging with visual AI precision
           </Text>
         </View>
 
@@ -322,7 +314,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             disabled={loading}
           >
             <LinearGradient
-              colors={['#FF3B30', '#FF2D55']}
+              colors={['#22C55E', '#16A34A']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.registerGradient}

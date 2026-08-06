@@ -16,7 +16,6 @@ import {
   TrendingUp,
   Droplets,
   ShieldCheck,
-  Sparkles,
   ChevronRight,
   Flame,
   Scale,
@@ -28,13 +27,13 @@ import { RootStackParamList } from '../../navigation/types';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { GlassCard } from '../../components/GlassCard';
+import { AppLogo } from '../../components/AppLogo';
 import { useTheme } from '../../theme/useTheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoalType, ActivityLevel, Gender } from '../../types';
+import { APP_CONFIG } from '../../constants/config';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
-
-const { width } = Dimensions.get('window');
 
 export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const { theme, isDark } = useTheme();
@@ -55,35 +54,35 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       id: 'scanner',
       title: 'Visual AI Food Recognition',
       subtitle: 'Snap your meal to instantly detect calories, protein, carbs, and micronutrients in 1.2s.',
-      icon: <Camera color="#FF3B30" size={22} strokeWidth={2.2} />,
+      icon: <Camera color="#22C55E" size={22} strokeWidth={2.2} />,
       badge: '99.4% Accuracy',
-      color: '#FF3B30',
-      bgColor: 'rgba(255, 59, 48, 0.10)',
+      color: '#22C55E',
+      bgColor: 'rgba(34, 197, 94, 0.10)',
     },
     {
       id: 'metabolic',
       title: 'Clinical Metabolic Insights',
-      subtitle: 'Seamless Apple Health sync tracking resting energy expenditure & caloric deficit curves.',
-      icon: <TrendingUp color="#34C759" size={22} strokeWidth={2.2} />,
-      badge: 'Apple Health Sync',
-      color: '#34C759',
-      bgColor: 'rgba(52, 199, 89, 0.10)',
+      subtitle: 'Real-time motion tracking calculating active burn, steps, and caloric deficit curves.',
+      icon: <TrendingUp color="#F97316" size={22} strokeWidth={2.2} />,
+      badge: 'Motion Sensor Sync',
+      color: '#F97316',
+      bgColor: 'rgba(249, 115, 22, 0.10)',
     },
     {
       id: 'hydration',
       title: 'Smart Hydration & Fasting',
       subtitle: 'Adaptive water logging milestones and circadian fasting window countdowns.',
-      icon: <Droplets color="#007AFF" size={22} strokeWidth={2.2} />,
+      icon: <Droplets color="#06B6D4" size={22} strokeWidth={2.2} />,
       badge: 'Circadian Timers',
-      color: '#007AFF',
-      bgColor: 'rgba(0, 122, 255, 0.10)',
+      color: '#06B6D4',
+      bgColor: 'rgba(6, 182, 212, 0.10)',
     },
   ];
 
   const goals = [
-    { type: 'LOSE_WEIGHT' as GoalType, title: 'Lose Fat', subtitle: 'Targeted caloric deficit & high protein', icon: <Flame color="#FF3B30" size={20} /> },
-    { type: 'MAINTAIN' as GoalType, title: 'Maintain & Tone', subtitle: 'Balanced macros for peak metabolic health', icon: <Scale color="#007AFF" size={20} /> },
-    { type: 'GAIN_WEIGHT' as GoalType, title: 'Build Muscle', subtitle: 'Caloric surplus with optimal hypertrophy macros', icon: <Dumbbell color="#34C759" size={20} /> },
+    { type: 'LOSE_WEIGHT' as GoalType, title: 'Lose Fat', subtitle: 'Targeted caloric deficit & high protein', icon: <Flame color="#F97316" size={20} /> },
+    { type: 'MAINTAIN' as GoalType, title: 'Maintain & Tone', subtitle: 'Balanced macros for peak metabolic health', icon: <Scale color="#22C55E" size={20} /> },
+    { type: 'GAIN_WEIGHT' as GoalType, title: 'Build Muscle', subtitle: 'Caloric surplus with optimal hypertrophy macros', icon: <Dumbbell color="#3B82F6" size={20} /> },
   ];
 
   const activityLevels = [
@@ -128,23 +127,9 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.topAura}
           />
 
-          {/* Calora AI Brand Hero */}
+          {/* SnapCalora AI Brand Hero */}
           <View style={styles.brandHero}>
-            <LinearGradient
-              colors={['#FF3B30', '#FF2D55']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoBadge}
-            >
-              <Sparkles color="#FFFFFF" size={28} strokeWidth={2.5} />
-            </LinearGradient>
-
-            <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>
-              Calora AI
-            </Text>
-            <Text style={[styles.brandTagline, { color: theme.textSecondary }]}>
-              Intelligent Nutrition & Metabolic Precision
-            </Text>
+            <AppLogo size="large" showText={true} showTagline={true} style={{ marginBottom: 6 }} />
           </View>
 
           {/* Feature Showcase Cards */}
@@ -178,14 +163,14 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           {/* Trust Badges */}
           <View style={styles.trustBadgesRow}>
             <View style={[styles.trustBadge, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-              <ShieldCheck color="#34C759" size={16} strokeWidth={2.2} />
+              <ShieldCheck color="#22C55E" size={16} strokeWidth={2.2} />
               <Text style={[styles.trustBadgeText, { color: theme.textSecondary }]}>
                 99.4% Macro Accuracy
               </Text>
             </View>
 
             <View style={[styles.trustBadge, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-              <Lock color="#007AFF" size={15} strokeWidth={2.2} />
+              <Lock color="#F97316" size={15} strokeWidth={2.2} />
               <Text style={[styles.trustBadgeText, { color: theme.textSecondary }]}>
                 Private & Encrypted
               </Text>
@@ -200,7 +185,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
               onPress={() => setStage('SETUP')}
             >
               <LinearGradient
-                colors={['#FF3B30', '#FF2D55']}
+                colors={['#22C55E', '#16A34A']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.primaryGradient}
@@ -255,7 +240,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </View>
 
-          <View style={[styles.progressBar, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+          <View style={[styles.progressBar, { backgroundColor: isDark ? '#1F2937' : '#E5E7EB' }]}>
             <View style={[styles.progressFill, { width: `${(step / 3) * 100}%` }]} />
           </View>
         </View>
@@ -267,7 +252,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                 What is your primary goal?
               </Text>
               <Text style={[styles.subheading, { color: theme.textSecondary }]}>
-                Calora AI personalizes your daily calories, protein targets, and metabolic health curves.
+                {APP_CONFIG.appName} personalizes your daily calories, protein targets, and metabolic health curves.
               </Text>
 
               {goals.map((g) => {
@@ -281,14 +266,14 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                       styles.optionCard,
                       {
                         backgroundColor: theme.card,
-                        borderColor: isSelected ? '#FF3B30' : theme.cardBorder,
+                        borderColor: isSelected ? '#22C55E' : theme.cardBorder,
                       },
                       isSelected && {
-                        backgroundColor: isDark ? 'rgba(255, 59, 48, 0.12)' : '#FFF0EF',
+                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.12)' : '#F0FDF4',
                       },
                     ]}
                   >
-                    <View style={[styles.goalIconBadge, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+                    <View style={[styles.goalIconBadge, { backgroundColor: isDark ? '#1F2937' : '#E5E7EB' }]}>
                       {g.icon}
                     </View>
                     <View style={styles.optionTextContainer}>
@@ -299,7 +284,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                         {g.subtitle}
                       </Text>
                     </View>
-                    <ChevronRight color={isSelected ? '#FF3B30' : theme.textMuted} size={18} strokeWidth={2} />
+                    <ChevronRight color={isSelected ? '#22C55E' : theme.textMuted} size={18} strokeWidth={2} />
                   </TouchableOpacity>
                 );
               })}
@@ -328,17 +313,17 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                       styles.genderButton,
                       {
                         backgroundColor: theme.card,
-                        borderColor: gender === gen ? '#FF3B30' : theme.cardBorder,
+                        borderColor: gender === gen ? '#22C55E' : theme.cardBorder,
                       },
                       gender === gen && {
-                        backgroundColor: isDark ? 'rgba(255, 59, 48, 0.12)' : '#FFF0EF',
+                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.12)' : '#F0FDF4',
                       },
                     ]}
                   >
                     <Text
                       style={[
                         styles.genderText,
-                        { color: gender === gen ? '#FF3B30' : theme.textSecondary },
+                        { color: gender === gen ? '#22C55E' : theme.textSecondary },
                       ]}
                     >
                       {gen}
@@ -393,10 +378,10 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                       styles.optionCard,
                       {
                         backgroundColor: theme.card,
-                        borderColor: isSelected ? '#FF3B30' : theme.cardBorder,
+                        borderColor: isSelected ? '#22C55E' : theme.cardBorder,
                       },
                       isSelected && {
-                        backgroundColor: isDark ? 'rgba(255, 59, 48, 0.12)' : '#FFF0EF',
+                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.12)' : '#F0FDF4',
                       },
                     ]}
                   >
@@ -408,7 +393,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                         {a.subtitle}
                       </Text>
                     </View>
-                    <ChevronRight color={isSelected ? '#FF3B30' : theme.textMuted} size={18} strokeWidth={2} />
+                    <ChevronRight color={isSelected ? '#22C55E' : theme.textMuted} size={18} strokeWidth={2} />
                   </TouchableOpacity>
                 );
               })}
@@ -454,32 +439,8 @@ const styles = StyleSheet.create({
   },
   brandHero: {
     alignItems: 'center',
-    marginBottom: 28,
-    marginTop: 10,
-  },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-    shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  brandTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  brandTagline: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginTop: 4,
-    textAlign: 'center',
+    marginBottom: 20,
+    marginTop: 6,
   },
   cardsList: {
     gap: 12,
@@ -555,9 +516,9 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#FF3B30',
+    shadowColor: '#22C55E',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -617,7 +578,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#22C55E',
     borderRadius: 2,
   },
   scrollContent: {

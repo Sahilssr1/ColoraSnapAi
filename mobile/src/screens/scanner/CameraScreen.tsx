@@ -7,7 +7,9 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -21,6 +23,7 @@ import { setCurrentScan } from '../../redux/slices/scannerSlice';
 type Props = NativeStackScreenProps<RootStackParamList, 'Camera'>;
 
 export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const mealType = route.params?.mealType || 'LUNCH';
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
@@ -36,7 +39,7 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
       <SafeAreaView style={styles.permissionContainer}>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionSubtitle}>
-          Calora AI uses your camera to instantly recognize meals, calculate macros, and scan barcodes.
+          SnapCalora AI uses your camera to instantly recognize meals, calculate macros, and scan barcodes.
         </Text>
         <TouchableOpacity style={styles.grantButton} onPress={requestPermission}>
           <Text style={styles.grantButtonText}>Grant Permission</Text>
@@ -111,8 +114,8 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       <CameraView style={StyleSheet.absoluteFillObject} ref={cameraRef}>
         <SafeAreaView style={styles.overlay}>
-          {/* Top Bar */}
-          <View style={styles.topBar}>
+          {/* Top Bar with Dynamic Insets */}
+          <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 14 : 8) }]}>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => navigation.goBack()}
@@ -142,7 +145,7 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
 
               {scanning && (
                 <View style={styles.scanningOverlay}>
-                  <ActivityIndicator size="large" color="#FF5E3A" />
+                  <ActivityIndicator size="large" color="#22C55E" />
                   <Text style={styles.scanningText}>Analyzing Nutrition with AI...</Text>
                 </View>
               )}
@@ -282,7 +285,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 32,
     height: 32,
-    borderColor: '#FF5E3A',
+    borderColor: '#22C55E',
   },
   topLeft: {
     top: 0,
@@ -361,7 +364,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#FF5E3A',
+    backgroundColor: '#22C55E',
   },
   searchButton: {
     width: 48,

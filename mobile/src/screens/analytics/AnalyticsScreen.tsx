@@ -5,14 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronLeft, Plus, Info, Sparkles, Footprints, Moon, Flame } from 'lucide-react-native';
-import { RootStackParamList } from '../../navigation/types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronLeft, Plus, Info, Sparkles, Footprints, Moon, Flame, Utensils } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { useDashboardQuery, useTrendsQuery } from '../../api/queries';
 import { GlassCard } from '../../components/GlassCard';
@@ -23,18 +21,25 @@ type TimeRange = 'D' | 'W' | 'M' | '6M' | 'Y';
 const { width } = Dimensions.get('window');
 
 export const AnalyticsScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const [selectedRange, setSelectedRange] = useState<TimeRange>('W');
 
+  const periodMap: Record<TimeRange, string> = {
+    D: 'day',
+    W: 'week',
+    M: 'month',
+    '6M': '6month',
+    Y: 'year',
+  };
+
   const { data: dashboard } = useDashboardQuery();
-  const { data: trendsData, isLoading: isTrendsLoading } = useTrendsQuery(
-    selectedRange === 'M' || selectedRange === '6M' || selectedRange === 'Y' ? 'month' : 'week'
-  );
+  const { data: trendsData, isLoading: isTrendsLoading } = useTrendsQuery(periodMap[selectedRange]);
 
   const ranges: TimeRange[] = ['D', 'W', 'M', '6M', 'Y'];
 
   const consumedCalories = dashboard?.summary?.caloriesConsumed ?? 0;
-  const targetCalories = dashboard?.goals?.targetCalories ?? 2000;
+  const targetCalories = trendsData?.targetCalories || dashboard?.goals?.targetCalories || 2000;
   const proteinConsumed = dashboard?.summary?.proteinConsumed ?? 0;
   const carbsConsumed = dashboard?.summary?.carbsConsumed ?? 0;
   const fatConsumed = dashboard?.summary?.fatConsumed ?? 0;
@@ -44,38 +49,123 @@ export const AnalyticsScreen = ({ navigation }: any) => {
   const overallScore = dashboard?.aiAnalysis?.overallScore ?? (calorieScore > 0 ? Math.min(99, Math.max(70, calorieScore)) : 85);
 
   const stepHistory = trendsData?.stepHistory || [];
+  const dailyTrends = trendsData?.dailyTrends || [];
   const sleepHistory = trendsData?.sleepHistory || [];
   const avgSteps = trendsData?.averages?.steps || 0;
+  const avgCalories = trendsData?.averages?.calories || 0;
+
+  const topInset = Math.max(insets.top, Platform.OS === 'android' ? 12 : 8);
+
+  // Dynamic label configs depending on range
+  const getRangeConfig = () => {
+    switch (selectedRange) {
+      case 'D':
+        return {
+          title: "TODAY'S ACTIVITY",
+          subLabel: 'Hourly activity synced from device motion tracking',
+          avgLabel: 'Total: ',
+          unit: 'steps today',
+          barWidth: 18,
+          barRadius: 6,
+          showAllLabels: true,
+        };
+      case 'W':
+        return {
+          title: 'PAST 7 DAYS ACTIVITY',
+          subLabel: 'Daily counts automatically synced from your phone pedometer',
+          avgLabel: 'Avg: ',
+          unit: 'steps/day',
+          barWidth: 14,
+          barRadius: 5,
+          showAllLabels: true,
+        };
+      case 'M':
+        return {
+          title: 'PAST 30 DAYS ACTIVITY',
+          subLabel: 'Daily walking consistency over the past month',
+          avgLabel: 'Avg: ',
+          unit: 'steps/day',
+          barWidth: 4.5,
+          barRadius: 2,
+          showAllLabels: false,
+        };
+      case '6M':
+        return {
+          title: 'PAST 6 MONTHS ACTIVITY',
+          subLabel: 'Monthly walking activity and movement trend',
+          avgLabel: 'Avg: ',
+          unit: 'steps/day',
+          barWidth: 22,
+          barRadius: 6,
+          showAllLabels: true,
+        };
+      case 'Y':
+        return {
+          title: 'PAST 12 MONTHS ACTIVITY',
+          subLabel: 'Long-term annual activity and movement trajectory',
+          avgLabel: 'Avg: ',
+          unit: 'steps/day',
+          barWidth: 10,
+          barRadius: 4,
+          showAllLabels: true,
+        };
+    }
+  };
+
+  const rangeConfig = getRangeConfig();
+
+  // Calculate highest step count for dynamic chart scaling
+  const maxStepVal = Math.max(10000, ...stepHistory.map((s) => s.steps));
+  const maxChartSteps = Math.max(12000, Math.ceil(maxStepVal / 2000) * 2000);
+
+  // Calculate highest calorie count for calorie chart
+  const maxCalVal = Math.max(targetCalories, ...dailyTrends.map((d) => d.calories));
+  const maxChartCalories = Math.max(2500, Math.ceil(maxCalVal / 500) * 500);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Safe Area Top Header */}
+      <View
+        style={[
+          styles.headerContainer,
+          {
+            paddingTop: topInset + 6,
+            backgroundColor: theme.background,
+          },
+        ]}
       >
-        {/* Navigation Top Bar: Back, Title, Add */}
         <View style={styles.navBar}>
           <TouchableOpacity
             style={styles.navBtn}
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           >
-            <ChevronLeft color={theme.tabBarActive} size={22} strokeWidth={2.5} />
+            <ChevronLeft color={theme.tabBarActive} size={24} strokeWidth={2.5} />
             <Text style={[styles.navBtnText, { color: theme.tabBarActive }]}>Summary</Text>
           </TouchableOpacity>
-          <Text style={[styles.navTitle, { color: theme.textPrimary }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.navTitle, { color: theme.textPrimary }]}
+          >
             Nutrition & Biometrics
           </Text>
           <TouchableOpacity
             style={styles.navAddBtn}
             onPress={() => navigation.navigate('Search')}
             activeOpacity={0.7}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           >
-            <Plus color={theme.tabBarActive} size={20} strokeWidth={2.5} />
+            <Plus color={theme.tabBarActive} size={22} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
+      </View>
 
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Range Selector: D W M 6M Y */}
         <View style={[styles.rangeContainer, { backgroundColor: theme.pillBackground }]}>
           {ranges.map((range) => {
@@ -113,17 +203,17 @@ export const AnalyticsScreen = ({ navigation }: any) => {
           })}
         </View>
 
-        {/* 1. Dedicated Walking Steps & Movement History Card (PostgreSQL) */}
+        {/* 1. Steps & Walking Activity Card */}
         <GlassCard style={styles.chartCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Footprints color="#FF9500" size={18} strokeWidth={2.5} />
               <Text style={[styles.rangeLabel, { color: '#FF9500', marginBottom: 0 }]}>
-                STEPS ACTIVITY (POSTGRESQL HISTORY)
+                {rangeConfig.title}
               </Text>
             </View>
             <Text style={[styles.avgStepsBadge, { color: theme.textSecondary }]}>
-              Avg: {avgSteps.toLocaleString()} steps/day
+              {rangeConfig.avgLabel}{avgSteps.toLocaleString()} {rangeConfig.unit}
             </Text>
           </View>
 
@@ -133,7 +223,7 @@ export const AnalyticsScreen = ({ navigation }: any) => {
               : `${(dashboard?.steps?.count ?? 0).toLocaleString()} steps`}
           </Text>
           <Text style={[styles.dateSubLabel, { color: theme.textSecondary }]}>
-            Daily counts automatically synced from your phone pedometer
+            {rangeConfig.subLabel}
           </Text>
 
           {/* Step History Bar Chart */}
@@ -141,12 +231,24 @@ export const AnalyticsScreen = ({ navigation }: any) => {
             <View style={[styles.gridLine, { top: '0%', borderColor: theme.separator }]} />
             <View style={[styles.gridLine, { top: '50%', borderColor: theme.separator }]} />
 
-            <View style={styles.chartColumnsRow}>
-              {stepHistory.length > 0 ? (
-                stepHistory.map((item, i) => {
-                  const maxChartSteps = 12000;
-                  const barHeightPct = Math.min(100, Math.max(8, (item.steps / maxChartSteps) * 100));
+            {isTrendsLoading ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator color="#FF9500" />
+              </View>
+            ) : (
+              <View style={styles.chartColumnsRow}>
+                {stepHistory.map((item, i) => {
+                  const barHeightPct = Math.min(100, Math.max(6, (item.steps / maxChartSteps) * 100));
                   const isGoalMet = item.steps >= 10000;
+
+                  // In Month view (30 days), only render key periodic day milestone labels to prevent overlap
+                  const showLabel =
+                    rangeConfig.showAllLabels ||
+                    i === 0 ||
+                    i === 7 ||
+                    i === 14 ||
+                    i === 21 ||
+                    i === stepHistory.length - 1;
 
                   return (
                     <View key={i} style={styles.columnContainer}>
@@ -154,23 +256,30 @@ export const AnalyticsScreen = ({ navigation }: any) => {
                         style={[
                           styles.stepHistoryBar,
                           {
+                            width: rangeConfig.barWidth,
                             height: `${barHeightPct}%`,
                             backgroundColor: isGoalMet ? '#34C759' : '#FF9500',
+                            borderRadius: rangeConfig.barRadius,
                           },
                         ]}
                       />
-                      <Text style={[styles.hourAxisText, { color: theme.textMuted }]}>
-                        {item.day || item.date.slice(5)}
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.hourAxisText,
+                          {
+                            color: showLabel ? theme.textMuted : 'transparent',
+                            fontSize: selectedRange === 'Y' ? 9 : 11,
+                          },
+                        ]}
+                      >
+                        {showLabel ? item.day : ''}
                       </Text>
                     </View>
                   );
-                })
-              ) : (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <ActivityIndicator color="#FF9500" />
-                </View>
-              )}
-            </View>
+                })}
+              </View>
+            )}
           </View>
 
           <View style={[styles.chartFooter, { borderTopColor: theme.separator }]}>
@@ -183,7 +292,95 @@ export const AnalyticsScreen = ({ navigation }: any) => {
           </View>
         </GlassCard>
 
-        {/* 2. Sleep & Clinical Rest History Card */}
+        {/* 2. Nutrition & Calorie Intake Trend Card */}
+        <GlassCard style={styles.chartCard}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Flame color="#FF3B30" size={18} strokeWidth={2.5} />
+              <Text style={[styles.rangeLabel, { color: '#FF3B30', marginBottom: 0 }]}>
+                CALORIE & NUTRITION INTAKE
+              </Text>
+            </View>
+            <Text style={[styles.avgStepsBadge, { color: theme.textSecondary }]}>
+              Avg: {Math.round(avgCalories)} kcal/day
+            </Text>
+          </View>
+
+          <Text style={[styles.rangeValueText, { color: theme.textPrimary }]}>
+            {selectedRange === 'D'
+              ? `${Math.round(consumedCalories)} kcal`
+              : `${Math.round(avgCalories)} kcal avg`}
+          </Text>
+          <Text style={[styles.dateSubLabel, { color: theme.textSecondary }]}>
+            Nutritional intake and target balance across {selectedRange === 'D' ? 'today' : selectedRange === 'W' ? 'the past 7 days' : selectedRange === 'M' ? 'the past 30 days' : selectedRange === '6M' ? 'the past 6 months' : 'the past 12 months'}
+          </Text>
+
+          {/* Calorie History Bar Chart */}
+          <View style={styles.chartArea}>
+            <View style={[styles.gridLine, { top: '0%', borderColor: theme.separator }]} />
+            <View style={[styles.gridLine, { top: '50%', borderColor: theme.separator }]} />
+
+            {isTrendsLoading ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator color="#FF3B30" />
+              </View>
+            ) : (
+              <View style={styles.chartColumnsRow}>
+                {dailyTrends.map((item, i) => {
+                  const barHeightPct = Math.min(100, Math.max(6, (item.calories / maxChartCalories) * 100));
+                  const isWithinTarget = item.calories <= targetCalories && item.calories > 0;
+
+                  const showLabel =
+                    rangeConfig.showAllLabels ||
+                    i === 0 ||
+                    i === 7 ||
+                    i === 14 ||
+                    i === 21 ||
+                    i === dailyTrends.length - 1;
+
+                  return (
+                    <View key={i} style={styles.columnContainer}>
+                      <View
+                        style={[
+                          styles.stepHistoryBar,
+                          {
+                            width: rangeConfig.barWidth,
+                            height: `${barHeightPct}%`,
+                            backgroundColor: isWithinTarget ? '#34C759' : '#FF3B30',
+                            borderRadius: rangeConfig.barRadius,
+                          },
+                        ]}
+                      />
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.hourAxisText,
+                          {
+                            color: showLabel ? theme.textMuted : 'transparent',
+                            fontSize: selectedRange === 'Y' ? 9 : 11,
+                          },
+                        ]}
+                      >
+                        {showLabel ? item.day : ''}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.chartFooter, { borderTopColor: theme.separator }]}>
+            <Text style={[styles.latestText, { color: theme.textSecondary }]}>
+              Target Calorie Goal:
+            </Text>
+            <Text style={[styles.latestValText, { color: '#FF9500' }]}>
+              {targetCalories} kcal / day
+            </Text>
+          </View>
+        </GlassCard>
+
+        {/* 3. Sleep & Clinical Rest History Card */}
         {sleepHistory.length > 0 && (
           <GlassCard style={styles.chartCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -209,7 +406,7 @@ export const AnalyticsScreen = ({ navigation }: any) => {
           </GlassCard>
         )}
 
-        {/* 3. Nutrition & Biomarkers Score Breakdown */}
+        {/* 4. Nutrition & Biomarkers Score Breakdown */}
         <GlassCard style={styles.scoreBreakdownCard}>
           <View style={styles.scoreHeaderRow}>
             <MiniScoreGauge score={overallScore} size={64} strokeWidth={7} />
@@ -289,52 +486,61 @@ export const AnalyticsScreen = ({ navigation }: any) => {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <Info color={theme.tabBarActive} size={18} strokeWidth={2.2} />
             <Text style={[styles.aboutTitle, { color: theme.textPrimary }]}>
-              About Step Tracking & PostgreSQL Persistence
+              About Step Tracking & Activity
             </Text>
           </View>
           <Text style={[styles.aboutText, { color: theme.textSecondary }]}>
-            Calora reads motion sensors in real time to calculate footsteps, distance, and active calorie burn. Every stride automatically updates your daily record in the PostgreSQL database, preserving past days' history for long-term health trends.
+            SnapCalora Ai reads your device motion sensors in real time to calculate footsteps, distance, and active calorie burn throughout the day, preserving your past activity trends for long-term health tracking.
           </Text>
         </GlassCard>
 
         <View style={{ height: 110 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
   container: {
     flex: 1,
   },
+  headerContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    zIndex: 10,
+  },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 10 : 14,
+    paddingTop: 8,
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    minHeight: 44,
   },
   navBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: -6,
+    paddingVertical: 6,
+    paddingRight: 8,
+    marginLeft: -4,
   },
   navBtnText: {
     fontSize: 17,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginLeft: 2,
   },
   navTitle: {
     fontSize: 17,
     fontWeight: '700',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   navAddBtn: {
-    padding: 4,
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rangeContainer: {
     flexDirection: 'row',
@@ -390,16 +596,16 @@ const styles = StyleSheet.create({
   },
   chartColumnsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: '100%',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   columnContainer: {
+    flex: 1,
     alignItems: 'center',
     height: '100%',
     justifyContent: 'flex-end',
-    width: 38,
   },
   stepHistoryBar: {
     width: 14,
@@ -409,6 +615,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 6,
+    height: 16,
+    textAlign: 'center',
   },
   chartFooter: {
     flexDirection: 'row',

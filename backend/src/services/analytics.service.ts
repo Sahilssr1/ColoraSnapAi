@@ -248,7 +248,245 @@ export class AnalyticsService {
     };
   }
 
-  async getTrends(userId: string, period: 'week' | 'month' = 'week') {
+  async getTrends(userId: string, periodInput: string = 'week') {
+    const rawPeriod = (periodInput || 'week').toLowerCase();
+    let period: 'day' | 'week' | 'month' | '6month' | 'year' = 'week';
+    if (rawPeriod === 'd' || rawPeriod === 'day') period = 'day';
+    else if (rawPeriod === 'w' || rawPeriod === 'week') period = 'week';
+    else if (rawPeriod === 'm' || rawPeriod === 'month') period = 'month';
+    else if (rawPeriod === '6m' || rawPeriod === '6month') period = '6month';
+    else if (rawPeriod === 'y' || rawPeriod === 'year') period = 'year';
+
+    const userGoal = await goalRepository.findByUserId(userId);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    if (period === 'day') {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const mealLogs = await mealRepository.findByUserDateRange(userId, todayStart, todayEnd);
+      const analyticsHistory = await analyticsRepository.getHistory(userId, todayStart, todayEnd);
+      const todayAnalytics = analyticsHistory[0];
+      const meta = (todayAnalytics?.deficiencyFlags as any) || {};
+      const todaySteps = meta.steps?.count || 0;
+      const todayBurned = todayAnalytics?.burnedCalories || meta.steps?.burnedCalories || 0;
+      const todaySleep = meta.sleep || { hours: 0, score: 0, status: 'No record' };
+
+      const intervals = [
+        { label: '6A', hour: 6 },
+        { label: '9A', hour: 9 },
+        { label: '12P', hour: 12 },
+        { label: '3P', hour: 15 },
+        { label: '6P', hour: 18 },
+        { label: '9P', hour: 21 },
+      ];
+
+      const currentHour = new Date().getHours();
+      const activeIntervalCount = Math.max(1, intervals.filter(i => currentHour >= i.hour - 2).length);
+
+      const stepHistory = intervals.map((intv) => {
+        const isPastOrNow = currentHour >= intv.hour - 2;
+        const portion = isPastOrNow ? Math.round(todaySteps / activeIntervalCount) : 0;
+        return {
+          date: todayStart.toISOString().split('T')[0],
+          day: intv.label,
+          steps: portion,
+          burnedCalories: Math.round(portion * 0.04),
+          goal: 10000,
+        };
+      });
+
+      const dailyTrends = intervals.map((intv) => {
+        let calories = 0, protein = 0, carbs = 0, fat = 0;
+        for (const meal of mealLogs) {
+          const mealHour = new Date(meal.createdAt || meal.date).getHours();
+          if (Math.abs(mealHour - intv.hour) <= 2) {
+            calories += meal.calories;
+            protein += meal.protein;
+            carbs += meal.carbs;
+            fat += meal.fat;
+          }
+        }
+        return {
+          date: todayStart.toISOString().split('T')[0],
+          day: intv.label,
+          calories,
+          protein,
+          carbs,
+          fat,
+        };
+      });
+
+      const totalCalories = mealLogs.reduce((sum, m) => sum + m.calories, 0);
+      const totalProtein = mealLogs.reduce((sum, m) => sum + m.protein, 0);
+      const totalCarbs = mealLogs.reduce((sum, m) => sum + m.carbs, 0);
+      const totalFat = mealLogs.reduce((sum, m) => sum + m.fat, 0);
+
+      return {
+        period,
+        days: 1,
+        targetCalories: userGoal?.targetCalories || 2000,
+        averages: {
+          calories: totalCalories,
+          protein: Number(totalProtein.toFixed(1)),
+          carbs: Number(totalCarbs.toFixed(1)),
+          fat: Number(totalFat.toFixed(1)),
+          steps: todaySteps,
+        },
+        dailyTrends,
+        stepHistory,
+        sleepHistory: [
+          {
+            date: todayStart.toISOString().split('T')[0],
+            day: 'Today',
+            hours: todaySleep.hours || 0,
+            score: todaySleep.score || 0,
+            status: todaySleep.status || 'Restorative Sleep',
+          }
+        ],
+        weightHistory: [],
+      };
+    }
+
+    if (period === '6month' || period === 'year') {
+      const monthCount = period === '6month' ? 6 : 12;
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth() - monthCount + 1, 1, 0, 0, 0, 0);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      const mealLogs = await mealRepository.findByUserDateRange(userId, startDate, endDate);
+      const weightHistory = await weightRepository.getHistory(userId, monthCount * 30);
+      const analyticsHistory = await analyticsRepository.getHistory(userId, startDate, endDate);
+
+      const monthlyData: Array<{
+        monthKey: string;
+        label: string;
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        steps: number;
+        burnedCalories: number;
+        sleepHours: number;
+        sleepScore: number;
+        daysWithLogs: number;
+      }> = [];
+
+      for (let i = 0; i < monthCount; i++) {
+        const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const label = monthNames[m];
+        monthlyData.push({
+          monthKey,
+          label,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          steps: 0,
+          burnedCalories: 0,
+          sleepHours: 0,
+          sleepScore: 0,
+          daysWithLogs: 0,
+        });
+      }
+
+      for (const meal of mealLogs) {
+        const key = meal.date.toISOString().slice(0, 7);
+        const mEntry = monthlyData.find(m => m.monthKey === key);
+        if (mEntry) {
+          mEntry.calories += meal.calories;
+          mEntry.protein += meal.protein;
+          mEntry.carbs += meal.carbs;
+          mEntry.fat += meal.fat;
+        }
+      }
+
+      for (const a of analyticsHistory) {
+        const key = a.date.toISOString().slice(0, 7);
+        const mEntry = monthlyData.find(m => m.monthKey === key);
+        if (mEntry) {
+          mEntry.daysWithLogs += 1;
+          const meta = (a.deficiencyFlags as any) || {};
+          if (meta.steps) {
+            mEntry.steps += meta.steps.count || 0;
+            mEntry.burnedCalories += a.burnedCalories || meta.steps.burnedCalories || 0;
+          }
+          if (meta.sleep) {
+            mEntry.sleepHours += meta.sleep.hours || 0;
+            mEntry.sleepScore += meta.sleep.score || 0;
+          }
+        }
+      }
+
+      const stepHistory = monthlyData.map(m => {
+        const divisor = Math.max(1, m.daysWithLogs);
+        const avgDailySteps = Math.round(m.steps / divisor);
+        return {
+          date: m.monthKey,
+          day: m.label,
+          steps: avgDailySteps > 0 ? avgDailySteps : (m.monthKey === now.toISOString().slice(0, 7) ? m.steps : 0),
+          burnedCalories: Math.round(m.burnedCalories / divisor),
+          goal: 10000,
+        };
+      });
+
+      const dailyTrends = monthlyData.map(m => {
+        const daysInMonth = 30;
+        return {
+          date: m.monthKey,
+          day: m.label,
+          calories: Math.round(m.calories / daysInMonth),
+          protein: Number((m.protein / daysInMonth).toFixed(1)),
+          carbs: Number((m.carbs / daysInMonth).toFixed(1)),
+          fat: Number((m.fat / daysInMonth).toFixed(1)),
+        };
+      });
+
+      const sleepHistory = monthlyData.map(m => {
+        const divisor = Math.max(1, m.daysWithLogs);
+        return {
+          date: m.monthKey,
+          day: m.label,
+          hours: Number((m.sleepHours / divisor).toFixed(1)),
+          score: Math.round(m.sleepScore / divisor),
+          status: 'Monthly Average',
+        };
+      });
+
+      const avgCalories = dailyTrends.reduce((sum, d) => sum + d.calories, 0) / monthCount;
+      const avgProtein = dailyTrends.reduce((sum, d) => sum + d.protein, 0) / monthCount;
+      const avgCarbs = dailyTrends.reduce((sum, d) => sum + d.carbs, 0) / monthCount;
+      const avgFat = dailyTrends.reduce((sum, d) => sum + d.fat, 0) / monthCount;
+      const avgSteps = Math.round(stepHistory.reduce((sum, s) => sum + s.steps, 0) / monthCount);
+
+      return {
+        period,
+        days: monthCount * 30,
+        targetCalories: userGoal?.targetCalories || 2000,
+        averages: {
+          calories: Number(avgCalories.toFixed(0)),
+          protein: Number(avgProtein.toFixed(1)),
+          carbs: Number(avgCarbs.toFixed(1)),
+          fat: Number(avgFat.toFixed(1)),
+          steps: avgSteps,
+        },
+        dailyTrends,
+        stepHistory,
+        sleepHistory,
+        weightHistory: weightHistory.map((w) => ({
+          date: w.date.toISOString().split('T')[0],
+          weight: w.weight,
+        })),
+      };
+    }
+
+    // Default: 'week' (7 days) or 'month' (30 days)
     const days = period === 'week' ? 7 : 30;
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
@@ -259,11 +497,7 @@ export class AnalyticsService {
     const mealLogs = await mealRepository.findByUserDateRange(userId, startDate, endDate);
     const weightHistory = await weightRepository.getHistory(userId, days);
     const analyticsHistory = await analyticsRepository.getHistory(userId, startDate, endDate);
-    const userGoal = await goalRepository.findByUserId(userId);
 
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    // Group logs by day
     const dayMap = new Map<string, { calories: number; protein: number; carbs: number; fat: number; date: string; day: string }>();
     const stepMap = new Map<string, { steps: number; burnedCalories: number }>();
     const sleepMap = new Map<string, { hours: number; score: number; status: string }>();
@@ -273,7 +507,9 @@ export class AnalyticsService {
       d.setDate(d.getDate() + i);
       const key = d.toISOString().split('T')[0];
       const dayName = dayNames[d.getDay()];
-      dayMap.set(key, { date: key, day: dayName, calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const dayOfMonth = d.getDate();
+      const label = period === 'month' ? String(dayOfMonth) : dayName;
+      dayMap.set(key, { date: key, day: label, calories: 0, protein: 0, carbs: 0, fat: 0 });
       stepMap.set(key, { steps: 0, burnedCalories: 0 });
       sleepMap.set(key, { hours: 0, score: 0, status: 'No record' });
     }
@@ -310,9 +546,12 @@ export class AnalyticsService {
     const dailyTrends = Array.from(dayMap.values());
     const stepHistory = Array.from(stepMap.entries()).map(([date, data]) => {
       const d = new Date(date);
+      const dayName = dayNames[d.getDay()];
+      const dayOfMonth = d.getDate();
+      const label = period === 'month' ? String(dayOfMonth) : dayName;
       return {
         date,
-        day: dayNames[d.getDay()],
+        day: label,
         steps: data.steps,
         burnedCalories: data.burnedCalories,
         goal: 10000,
@@ -321,9 +560,10 @@ export class AnalyticsService {
 
     const sleepHistory = Array.from(sleepMap.entries()).map(([date, data]) => {
       const d = new Date(date);
+      const dayName = dayNames[d.getDay()];
       return {
         date,
-        day: dayNames[d.getDay()],
+        day: dayName,
         hours: data.hours,
         score: data.score,
         status: data.status,

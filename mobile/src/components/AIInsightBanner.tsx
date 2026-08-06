@@ -36,7 +36,7 @@ export const AIInsightBanner: React.FC<AIInsightBannerProps> = ({
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.sparkle}>✨</Text>
-          <Text style={styles.title}>Calora AI Advisor</Text>
+          <Text style={styles.title}>SnapCalora AI Advisor</Text>
         </View>
 
         <View style={styles.scoreBadge}>
