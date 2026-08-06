@@ -13,6 +13,8 @@ try {
     GoogleSigninModule.configure({
       webClientId: GOOGLE_AUTH_CONFIG.webClientId,
       iosClientId: GOOGLE_AUTH_CONFIG.iosClientId,
+      offlineAccess: false,
+      scopes: ['profile', 'email'],
     });
     isConfigured = true;
   }

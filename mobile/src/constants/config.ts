@@ -5,7 +5,7 @@ export const API_BASE_URL = 'https://colorasnapai.onrender.com/api/v1';
 
 export const GOOGLE_AUTH_CONFIG = {
   webClientId: '523607561287-ck3d4v5gf4rmtr02o9a54jac9coampvh.apps.googleusercontent.com',
-  androidClientId: '523607561287-f0ibp3gmsk50oakvr9rt0l13hjr4jgv6.apps.googleusercontent.com',
+  androidClientId: '523607561287-qsragu85a4nhdjv6l3jus85e47h31vc5.apps.googleusercontent.com',
   iosClientId: '523607561287-ck3d4v5gf4rmtr02o9a54jac9coampvh.apps.googleusercontent.com',
 };
 

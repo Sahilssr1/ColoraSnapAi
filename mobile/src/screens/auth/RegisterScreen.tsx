@@ -123,9 +123,11 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
         setError(''); // User cancelled
       } else if (err.code === statusCodes.IN_PROGRESS) {
-        setError('Sign in is in progress already');
+        setError('Sign in is already in progress');
       } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services not available or outdated');
+        setError('Google Play Services is not available or outdated');
+      } else if (err.message?.includes('DEVELOPER_ERROR') || err.code === '10' || err.code === 10) {
+        setError('Google Sign-In Error: SHA-1 fingerprint needs to be added in Google Cloud Console for com.calora.ai');
       } else {
         setError(err.message || 'Google sign in failed');
       }
