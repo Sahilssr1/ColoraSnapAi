@@ -2,7 +2,7 @@
   "expo": {
     "name": "SnapCalora AI",
     "slug": "calora-ai",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.calora.ai",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#F9FAFB"
       },
@@ -49,6 +49,16 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow SnapCalora Ai to access your photos to analyze meal images."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "35.0.0"
+          }
         }
       ],
       "@react-native-google-signin/google-signin"
