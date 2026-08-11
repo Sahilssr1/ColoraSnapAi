@@ -1,4 +1,4 @@
-import { FoodItem, MealType, RecognizedPlate } from '../types';
+import { FoodItem, MealType } from '../types';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -8,10 +8,12 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Camera: { mealType?: MealType };
   Barcode: { mealType?: MealType };
-  FoodResult: { scanResult: RecognizedPlate; mealType: MealType };
+  FoodResult: { scanResult: any; mealType: MealType };
   FoodDetail: { food: FoodItem; mealType?: MealType };
   Search: { mealType?: MealType };
   AIInsights: undefined;
+  PrivacyPolicy: undefined;
+  About: undefined;
 };
 
 export type MainTabParamList = {

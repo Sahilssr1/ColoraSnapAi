@@ -18,6 +18,7 @@ import {
   Scale,
   Dumbbell,
   LogOut,
+  UserX,
 } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { logout, updateUser } from '../../redux/slices/authSlice';
@@ -116,6 +117,34 @@ export const ProfileScreen: React.FC = () => {
       ),
     },
   ];
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you absolutely sure? This will permanently delete your account, biometrics, and all meal logs. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.delete('/user/profile');
+              await AsyncStorage.removeItem('calora_access_token');
+              await AsyncStorage.removeItem('calora_refresh_token');
+              dispatch(logout());
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (e) {
+              Alert.alert('Error', 'Could not delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -315,6 +344,27 @@ export const ProfileScreen: React.FC = () => {
           )}
         </GlassCard>
 
+        {/* Privacy & About Links */}
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Information
+        </Text>
+        <GlassCard style={[styles.themeCard, { paddingVertical: 8 }]}>
+          <TouchableOpacity 
+            style={[styles.linkRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator }]} 
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.linkText, { color: theme.textPrimary }]}>Privacy Policy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.linkRow} 
+            onPress={() => navigation.navigate('About')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.linkText, { color: theme.textPrimary }]}>About SnapCalora AI</Text>
+          </TouchableOpacity>
+        </GlassCard>
+
         {/* Sign Out Button */}
         <TouchableOpacity
           style={[
@@ -326,6 +376,19 @@ export const ProfileScreen: React.FC = () => {
         >
           <LogOut color="#EF4444" size={18} strokeWidth={2.2} style={{ marginRight: 8 }} />
           <Text style={styles.logoutBtnText}>Sign Out of SnapCalora AI</Text>
+        </TouchableOpacity>
+
+        {/* Delete Account Button */}
+        <TouchableOpacity
+          style={[
+            styles.logoutBtn,
+            { backgroundColor: 'transparent', marginTop: 16, borderWidth: 1, borderColor: '#EF4444' },
+          ]}
+          onPress={handleDeleteAccount}
+          activeOpacity={0.7}
+        >
+          <UserX color="#EF4444" size={18} strokeWidth={2.2} style={{ marginRight: 8 }} />
+          <Text style={styles.logoutBtnText}>Delete Account Data</Text>
         </TouchableOpacity>
 
         <View style={{ height: 110 }} />
@@ -487,5 +550,13 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 16,
     fontWeight: '700',
+  },
+  linkRow: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  linkText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

@@ -42,6 +42,19 @@ export class UserController {
       next(error);
     }
   }
+
+  async deleteAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      await userService.deleteAccount(userId);
+      res.status(200).json({
+        success: true,
+        message: 'Account deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userController = new UserController();

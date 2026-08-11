@@ -78,6 +78,13 @@ export class UserRepository {
       data: { revoked: true },
     });
   }
+
+  async delete(id: string): Promise<User> {
+    // Due to onDelete: Cascade in prisma schema, deleting the user will delete all related records
+    return prisma.user.delete({
+      where: { id },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();

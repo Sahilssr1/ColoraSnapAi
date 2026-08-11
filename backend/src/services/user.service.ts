@@ -88,6 +88,11 @@ export class UserService {
   async getWeightHistory(userId: string, limit = 30) {
     return weightRepository.getHistory(userId, limit);
   }
+
+  async deleteAccount(userId: string) {
+    return userRepository.delete(userId);
+  }
 }
 
 export const userService = new UserService();
+

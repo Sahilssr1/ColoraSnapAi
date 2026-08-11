@@ -12,6 +12,8 @@ import { FoodResultScreen } from '../screens/scanner/FoodResultScreen';
 import { FoodDetailScreen } from '../screens/tracker/FoodDetailScreen';
 import { SearchScreen } from '../screens/tracker/SearchScreen';
 import { AIInsightsScreen } from '../screens/analytics/AIInsightsScreen';
+import { PrivacyPolicyScreen } from '../screens/profile/PrivacyPolicyScreen';
+import { AboutScreen } from '../screens/profile/AboutScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -44,6 +46,8 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="FoodDetail" component={FoodDetailScreen} />
       <Stack.Screen name="Search" component={SearchScreen as any} />
       <Stack.Screen name="AIInsights" component={AIInsightsScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />
     </Stack.Navigator>
   );
 };

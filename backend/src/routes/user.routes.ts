@@ -15,5 +15,6 @@ router.put('/profile', validateRequest(updateProfileSchema), (req, res, next) =>
 router.put('/goals', validateRequest(updateGoalsSchema), (req, res, next) =>
   userController.updateGoals(req, res, next)
 );
+router.delete('/profile', (req, res, next) => userController.deleteAccount(req, res, next));
 
 export default router;

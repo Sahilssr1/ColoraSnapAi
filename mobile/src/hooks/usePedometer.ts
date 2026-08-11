@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Pedometer } from 'expo-sensors';
 import { apiClient } from '../api/client';
 
 const STORAGE_KEY_STEPS = '@calora_today_steps';
@@ -20,10 +22,10 @@ export const usePedometer = (initialSteps: number = 0) => {
   const [pastStepCount, setPastStepCount] = useState<number>(initialSteps);
   const [dailyHistory, setDailyHistory] = useState<StepRecord[]>([]);
 
-  const lastStepTimeRef = useRef<number>(0);
   const lastSyncCountRef = useRef<number>(initialSteps);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const simIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const subscriptionRef = useRef<Pedometer.Subscription | null>(null);
 
   // Sync to PostgreSQL DB (Debounced)
   const syncStepsToBackend = useCallback(async (steps: number) => {
@@ -55,32 +57,10 @@ export const usePedometer = (initialSteps: number = 0) => {
     }, 3000);
   }, [syncStepsToBackend]);
 
-  // Load saved steps from storage on mount
+  // Load saved historical days
   useEffect(() => {
-    const loadSavedSteps = async () => {
+    const loadHistory = async () => {
       try {
-        const todayDateStr = new Date().toDateString();
-        const savedDate = await AsyncStorage.getItem(STORAGE_KEY_DATE);
-
-        if (savedDate === todayDateStr) {
-          const savedSteps = await AsyncStorage.getItem(STORAGE_KEY_STEPS);
-          if (savedSteps !== null) {
-            const parsed = parseInt(savedSteps, 10);
-            const base = Math.max(parsed, initialSteps);
-            setPastStepCount(base);
-            lastSyncCountRef.current = base;
-          } else {
-            setPastStepCount(initialSteps);
-          }
-        } else {
-          // New day reset
-          await AsyncStorage.setItem(STORAGE_KEY_DATE, todayDateStr);
-          await AsyncStorage.setItem(STORAGE_KEY_STEPS, `${initialSteps}`);
-          setPastStepCount(initialSteps);
-          lastSyncCountRef.current = initialSteps;
-        }
-
-        // Load step history
         const rawHistory = await AsyncStorage.getItem(STORAGE_KEY_HISTORY);
         if (rawHistory) {
           const historyMap: Record<string, number> = JSON.parse(rawHistory);
@@ -91,83 +71,97 @@ export const usePedometer = (initialSteps: number = 0) => {
           }));
           setDailyHistory(historyList);
         }
-      } catch {
-        setPastStepCount(initialSteps);
+      } catch (e) {
+        console.error("Failed to load step history:", e);
       }
     };
+    loadHistory();
+  }, []);
 
-    loadSavedSteps();
-  }, [initialSteps]);
-
-  // Initialize hardware accelerometer / motion tracking
-  useEffect(() => {
-    let subscription: any = null;
-    let isSubscribed = true;
-
-    const startHardwareTracking = async () => {
-      try {
-        let ExpoSensors: any = null;
-        try {
-          ExpoSensors = require('expo-sensors');
-        } catch {
-          ExpoSensors = null;
-        }
-
-        if (ExpoSensors && ExpoSensors.Accelerometer && typeof ExpoSensors.Accelerometer.isAvailableAsync === 'function') {
-          const available = await ExpoSensors.Accelerometer.isAvailableAsync().catch(() => false);
-          if (available && isSubscribed) {
-            ExpoSensors.Accelerometer.setUpdateInterval(100);
-            setIsSensorTracking(true);
-            setIsPedometerAvailable(true);
-
-            subscription = ExpoSensors.Accelerometer.addListener((data: { x: number; y: number; z: number }) => {
-              if (!isSubscribed) return;
-
-              const magnitude = Math.sqrt((data?.x || 0) ** 2 + (data?.y || 0) ** 2 + (data?.z || 0) ** 2);
-              const now = Date.now();
-
-              if (magnitude > 1.22 && now - lastStepTimeRef.current > 280) {
-                lastStepTimeRef.current = now;
-                setCurrentStepCount((prev) => {
-                  const nextCurrent = prev + 1;
-                  const nextTotal = pastStepCount + nextCurrent;
-
-                  AsyncStorage.setItem(STORAGE_KEY_STEPS, `${nextTotal}`).catch(() => {});
-
-                  if (nextTotal - lastSyncCountRef.current >= 5) {
-                    scheduleDbSync(nextTotal);
-                  }
-
-                  return nextCurrent;
-                });
-              }
-            });
-          } else {
-            setIsSensorTracking(false);
-            setIsPedometerAvailable(false);
-          }
-        } else {
-          setIsSensorTracking(false);
-          setIsPedometerAvailable(false);
-        }
-      } catch {
-        setIsSensorTracking(false);
+  // Fetch OS Hardware Steps for Today
+  const fetchTodayStepsFromOS = useCallback(async () => {
+    try {
+      const { status } = await Pedometer.requestPermissionsAsync();
+      if (status !== 'granted') {
         setIsPedometerAvailable(false);
+        setIsSensorTracking(false);
+        return;
       }
-    };
 
-    startHardwareTracking().catch(() => {});
+      const available = await Pedometer.isAvailableAsync();
+      setIsPedometerAvailable(available);
+
+      if (available) {
+        const end = new Date();
+        const start = new Date();
+        start.setHours(0, 0, 0, 0); // Midnight today
+
+        const result = await Pedometer.getStepCountAsync(start, end);
+        if (result && result.steps !== undefined) {
+          // Native OS steps are absolute for the day!
+          // We override manual steps if OS has higher step count.
+          setPastStepCount(prev => Math.max(prev, result.steps, initialSteps));
+          
+          if (result.steps - lastSyncCountRef.current >= 5) {
+            scheduleDbSync(result.steps);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Error fetching OS steps:', error);
+      setIsPedometerAvailable(false);
+    }
+  }, [initialSteps, scheduleDbSync]);
+
+  // Handle Foreground / Background Lifecycle
+  useEffect(() => {
+    // 1. Fetch steps immediately on mount
+    fetchTodayStepsFromOS();
+
+    // 2. Fetch steps every time the app comes back to the foreground
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        fetchTodayStepsFromOS();
+      }
+    });
 
     return () => {
-      isSubscribed = false;
-      if (subscription && typeof subscription.remove === 'function') {
-        subscription.remove();
+      appStateSubscription.remove();
+    };
+  }, [fetchTodayStepsFromOS]);
+
+  // Live step tracking while app is open
+  useEffect(() => {
+    const startLiveTracking = async () => {
+      try {
+        if (!isPedometerAvailable) return;
+        
+        setIsSensorTracking(true);
+        subscriptionRef.current = Pedometer.watchStepCount(result => {
+          setCurrentStepCount(result.steps);
+          
+          const nextTotal = pastStepCount + result.steps;
+          if (nextTotal - lastSyncCountRef.current >= 5) {
+             scheduleDbSync(nextTotal);
+          }
+        });
+      } catch (e) {
+        setIsSensorTracking(false);
+      }
+    };
+
+    startLiveTracking();
+
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        subscriptionRef.current = null;
       }
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
       }
     };
-  }, [pastStepCount, scheduleDbSync]);
+  }, [isPedometerAvailable, pastStepCount, scheduleDbSync]);
 
   // Toggle Live Walk Simulation (for testing walking live on simulator/desk)
   const toggleWalkSimulation = useCallback(() => {
@@ -181,12 +175,9 @@ export const usePedometer = (initialSteps: number = 0) => {
           const nextCurrent = prev + 2; // +2 steps per stride
           const nextTotal = pastStepCount + nextCurrent;
 
-          AsyncStorage.setItem(STORAGE_KEY_STEPS, `${nextTotal}`).catch(() => {});
-
           if (nextTotal - lastSyncCountRef.current >= 6) {
             scheduleDbSync(nextTotal);
           }
-
           return nextCurrent;
         });
       }, 700); // 700ms normal walking step interval
@@ -202,12 +193,10 @@ export const usePedometer = (initialSteps: number = 0) => {
 
   // Add manual steps & sync to database
   const addSteps = async (count: number) => {
-    const nextCount = pastStepCount + count;
+    const nextCount = pastStepCount + currentStepCount + count;
     setPastStepCount(nextCount);
+    setCurrentStepCount(0);
     try {
-      const todayDateStr = new Date().toDateString();
-      await AsyncStorage.setItem(STORAGE_KEY_DATE, todayDateStr);
-      await AsyncStorage.setItem(STORAGE_KEY_STEPS, `${nextCount}`);
       await syncStepsToBackend(nextCount);
     } catch {}
   };
