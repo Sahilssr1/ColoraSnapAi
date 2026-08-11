@@ -8,3 +8,6 @@ npm-debug.log*
 yarn-debug.log*
 .DS_Store
 *.orig.*
+*.pem
+*.jks
+*.keystore
