@@ -9,6 +9,9 @@ import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-na
 import { store } from './src/redux/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useTheme } from './src/theme/useTheme';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,7 +69,14 @@ const AppContent: React.FC = () => {
 
   return (
     <PaperProvider theme={paperTheme}>
-      <NavigationContainer theme={navTheme}>
+      <NavigationContainer 
+        theme={navTheme}
+        onReady={() => {
+          setTimeout(() => {
+            SplashScreen.hideAsync();
+          }, 100); // Small delay to ensure smooth transition
+        }}
+      >
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <RootNavigator />
       </NavigationContainer>

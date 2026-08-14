@@ -96,19 +96,25 @@ export const usePedometer = (initialSteps: number = 0) => {
         const start = new Date();
         start.setHours(0, 0, 0, 0); // Midnight today
 
-        const result = await Pedometer.getStepCountAsync(start, end);
-        if (result && result.steps !== undefined) {
-          // Native OS steps are absolute for the day!
-          // We override manual steps if OS has higher step count.
-          setPastStepCount(prev => Math.max(prev, result.steps, initialSteps));
-          
-          if (result.steps - lastSyncCountRef.current >= 5) {
-            scheduleDbSync(result.steps);
+        try {
+          // This throws an error on Android!
+          const result = await Pedometer.getStepCountAsync(start, end);
+          if (result && result.steps !== undefined) {
+            // Native OS steps are absolute for the day!
+            // We override manual steps if OS has higher step count.
+            setPastStepCount(prev => Math.max(prev, result.steps, initialSteps));
+            
+            if (result.steps - lastSyncCountRef.current >= 5) {
+              scheduleDbSync(result.steps);
+            }
           }
+        } catch (innerError) {
+          console.log('Historical steps not available (Android expected):', innerError);
+          // Do nothing! We want to keep isPedometerAvailable = true so live tracking still works!
         }
       }
     } catch (error) {
-      console.log('Error fetching OS steps:', error);
+      console.log('Error checking OS pedometer availability:', error);
       setIsPedometerAvailable(false);
     }
   }, [initialSteps, scheduleDbSync]);
