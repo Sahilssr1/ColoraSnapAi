@@ -33,14 +33,6 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   OPENAI_API_KEY: z.string().optional(),
 
-<<<<<<< HEAD
-=======
-  // xAI Grok (used first for food scans when set). Key goes in Render env
-  // vars as GROK_API_KEY — never commit it to the repo or paste it in chat.
-  GROK_API_KEY: z.string().optional(),
-  GROK_MODEL: z.string().default('grok-4'),
-
->>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
   // Web OAuth client ID (type WEB) from Google Cloud Console. The backend
   // checks every Google ID token against this value; without it /auth/google
   // cannot verify a sign-in and will return a clear configuration error.
