@@ -135,6 +135,45 @@ Expo Go has no native Google Sign-In module and will always show the
 4. Build the Android release (`versionCode` 7 for the next Play upload)
    and confirm Play reports target SDK 36.
 
+## 6. Background walking / running tracker — checked 2026-10-29 (NOT pushed yet)
+
+Verdict: background tracking was NOT working, and it was not a bug in
+one line — it was missing entirely. Evidence: no `expo-task-manager`,
+no background fetch, no foreground service, no `FOREGROUND_SERVICE` /
+`RECEIVE_BOOT_COMPLETED` permissions; `usePedometer` only ran
+`Pedometer.watchStepCount` while the Home screen was mounted and
+re-fetched on foreground return, and its watch effect restarted (and
+could drop session steps on Android) every time the past total changed.
+Expo's own docs state pedometer updates are not delivered while the
+app is in the background, and `getStepCountAsync` is iOS-only — so on
+Android, steps taken while the app was closed could not be recovered.
+
+What was built instead (local, uncommitted at time of writing):
+- `mobile/src/hooks/useWalkRunSession.ts` — Start Walk / Start Run
+  session: live steps, elapsed time, distance (walk 0.762 m/step,
+  run 1.0 m/step, estimates), calories (walk 0.04, run 0.06 per step,
+  estimates), pace, pause/resume, stop-and-save, and a session history
+  in AsyncStorage. A session interrupted by closing the app restores
+  as PAUSED — it does not pretend steps taken while closed were counted.
+  Session steps are NOT posted to `/analytics/steps` again (the daily
+  pedometer already counts them), so totals are not double-counted.
+- `mobile/src/components/WalkRunTracker.tsx` — the card on the Home
+  screen (after the Steps card), with the background limit stated in
+  the card itself so users are not misled.
+- `mobile/src/hooks/usePedometer.ts` — watch subscription no longer
+  restarts when the past total changes (past total now read via a ref).
+
+What this does NOT do: true always-on background step counting on
+Android. That needs a native foreground service or Health Connect —
+a separate native build with Play policy declarations, not a JS change,
+and it cannot be verified from this VM (no Android device). Until
+then: keep the app open during a walk/run session.
+
+Test on a real Android device (dev build, not Expo Go): Start Walk,
+walk 50+ steps, check the live count; pause, resume, stop and check
+the session appears in Recent sessions; close the app mid-session,
+reopen, and confirm it comes back Paused, not as if it kept counting.
+
 ## Verification done locally (2026-10-29)
 
 - Changed backend TS files transpile cleanly (TypeScript transpile
