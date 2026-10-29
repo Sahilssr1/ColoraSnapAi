@@ -21,9 +21,11 @@ class MainApplication : Application(), ReactApplication {
         this,
         object : DefaultReactNativeHost(this) {
           override fun getPackages(): List<ReactPackage> {
-            // Packages that cannot be autolinked yet can be added manually here, for example:
-            // packages.add(new MyReactNativePackage());
-            return PackageList(this).packages
+            // StepTrackerPackage cannot be autolinked (it is handwritten
+            // Kotlin in this app, not an npm package), so it is added here.
+            val packages = PackageList(this).packages
+            packages.add(StepTrackerPackage())
+            return packages
           }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

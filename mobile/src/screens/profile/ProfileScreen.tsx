@@ -62,6 +62,13 @@ export const ProfileScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   const handleSaveProfile = async () => {
+    // An emptied field parses to NaN, which JSON turns into null and the
+    // backend rejects — previously that surfaced only as a generic
+    // "Failed to update profile" after a pointless network call.
+    if (Number.isNaN(parseFloat(weight)) || Number.isNaN(parseFloat(height)) || Number.isNaN(parseInt(age, 10))) {
+      Alert.alert('Invalid values', 'Please enter a valid weight, height and age.');
+      return;
+    }
     try {
       setSaving(true);
       const res = await apiClient.put('/user/profile', {

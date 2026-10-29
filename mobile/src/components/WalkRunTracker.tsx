@@ -7,9 +7,10 @@ import { useWalkRunSession, formatDuration } from '../hooks/useWalkRunSession';
 
 /**
  * User-facing Walk / Run tracker card (used on the Home screen).
- * Live tracking runs while the app is open; see useWalkRunSession for
- * the background limit, which is also stated in the card's note below
- * so the user is not misled about steps taken while the app is closed.
+ * On Android dev builds, an active session keeps counting in the
+ * background via the native foreground service; on iOS, HealthKit
+ * steps are recovered on return; in Expo Go, tracking is foreground
+ * only. See useWalkRunSession for the per-platform behaviour.
  */
 export const WalkRunTracker: React.FC = () => {
   const { theme } = useTheme();
@@ -111,9 +112,10 @@ export const WalkRunTracker: React.FC = () => {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Text style={[styles.note, { color: theme.textMuted }]}>
-        * Distance and calories are estimates from steps. Live tracking counts while the app is open —
-        on Android, steps taken while the app is fully closed are not counted (Expo pedometer limit),
-        so keep the app open during a session.
+        * Distance and calories are estimates from steps. On Android (dev build), an active session
+        keeps counting while the app is minimised or the screen is locked, via a foreground service
+        (look for the persistent "SnapCalora is tracking" notification). On iOS, steps are recovered
+        from HealthKit on return. In Expo Go, tracking is foreground-only.
       </Text>
 
       {history.length > 0 && (

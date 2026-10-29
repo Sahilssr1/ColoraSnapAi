@@ -177,7 +177,16 @@ export class AnalyticsService {
   }
 
   async logSteps(userId: string, steps: number, date: Date = new Date()) {
-    const validSteps = Math.max(0, Math.round(steps));
+    const existing = await analyticsRepository.getByDate(userId, date);
+    const existingMeta = (existing?.deficiencyFlags as any) || {};
+    const existingCount = existingMeta.steps?.count ?? 0;
+    // Daily steps are an absolute total, not an increment. Two clients
+    // (or a restarted watch / service) reporting different totals must
+    // never move the stored total backwards: a smaller report is stale,
+    // not a user un-walking. Previously the smaller value overwrote the
+    // larger one, so the Home count visibly jumped down after a restart.
+    // API and response shape are unchanged.
+    const validSteps = Math.max(0, Math.round(steps), existingCount);
     const burnedCalories = Number((validSteps * 0.04).toFixed(0));
 
     const stepsPayload = {
@@ -185,9 +194,6 @@ export class AnalyticsService {
       burnedCalories,
       updatedAt: new Date().toISOString(),
     };
-
-    const existing = await analyticsRepository.getByDate(userId, date);
-    const existingMeta = (existing?.deficiencyFlags as any) || {};
 
     await analyticsRepository.upsert(userId, date, {
       burnedCalories,

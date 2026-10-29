@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -88,6 +88,15 @@ export const HomeScreen = ({ navigation }: any) => {
     setRefreshing(false);
   };
 
+  // Stable header props: AppleHealthHeader is memoised, and these inline
+  // arrows used to be recreated on every step/timer render, defeating the
+  // memo and re-compositing the header gradient on every update.
+  const goToProfileTab = useCallback(() => navigation.navigate('ProfileTab'), [navigation]);
+  const headerUserName = useMemo(
+    () => user?.name || dashboard?.user?.name || 'SnapCalora Member',
+    [user?.name, dashboard?.user?.name]
+  );
+
   // Real Database Metrics & Goals
   const consumedCalories = dashboard?.summary?.caloriesConsumed ?? 0;
   const targetCalories = dashboard?.goals?.targetCalories ?? user?.goals?.targetCalories ?? 2000;
@@ -153,10 +162,10 @@ export const HomeScreen = ({ navigation }: any) => {
       >
         {/* Top Header: Date, Summary Title & Profile Avatar */}
         <AppleHealthHeader
-          userName={user?.name || dashboard?.user?.name || 'SnapCalora Member'}
+          userName={headerUserName}
           showEdit={true}
-          onEditPress={() => navigation.navigate('ProfileTab')}
-          onProfilePress={() => navigation.navigate('ProfileTab')}
+          onEditPress={goToProfileTab}
+          onProfilePress={goToProfileTab}
         />
 
         {/* 1. Activity Metric Card (Move / Exercise / Steps goal) - Live Motion & DB */}

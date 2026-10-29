@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,7 +14,13 @@ interface AppleHealthHeaderProps {
   onProfilePress?: () => void;
 }
 
-export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = ({
+// Memoised: Home re-renders on every step and every session timer tick.
+// Without memo, this header — including its absolute LinearGradient glow —
+// re-composited on every one of those renders, which reads on Android as
+// the header flickering continuously. Its props are primitives plus two
+// callbacks, so memo actually holds as long as the caller passes stable
+// callbacks (HomeScreen now does, via useCallback).
+export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = memo(({
   title = 'Summary',
   subtitle,
   userName = 'Calora User',
@@ -129,7 +135,7 @@ export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

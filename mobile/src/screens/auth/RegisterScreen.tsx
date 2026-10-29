@@ -52,7 +52,13 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     const loadProfile = async () => {
       const stored = await AsyncStorage.getItem('calora_pending_profile');
       if (stored) {
-        setPendingProfile(JSON.parse(stored));
+        try {
+          setPendingProfile(JSON.parse(stored));
+        } catch {
+          // Corrupted pending profile: fall back to defaults instead of
+          // crashing the register screen before it renders.
+          await AsyncStorage.removeItem('calora_pending_profile');
+        }
       }
     };
     loadProfile();

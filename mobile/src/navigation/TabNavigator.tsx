@@ -12,6 +12,16 @@ import { useTheme } from '../theme/useTheme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+// The centre button is a custom tabBarButton that opens the Camera screen,
+// so this tab is never actually focused. It previously rendered HomeScreen
+// as its component, which meant HomeScreen mounted TWICE on launch — two
+// pedometer subscriptions, two walk/run timers, two dashboard queries and
+// two backend step syncs racing each other, with the whole screen (header
+// included) re-rendering on every step and every timer tick. That is the
+// header flicker and the jumping step counts. A null component removes
+// the duplicate mount entirely.
+const NullScreen: React.FC = () => null;
+
 export const TabNavigator: React.FC = () => {
   const { theme, isDark } = useTheme();
 
@@ -84,7 +94,7 @@ export const TabNavigator: React.FC = () => {
       {/* 3. Center Floating Modern AI Scanner */}
       <Tab.Screen
         name="ScanTab"
-        component={HomeScreen}
+        component={NullScreen}
         options={({ navigation }) => ({
           tabBarLabel: '',
           tabBarButton: () => (

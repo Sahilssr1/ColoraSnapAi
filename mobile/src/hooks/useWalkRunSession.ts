@@ -1,27 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
+import {
+  isNativeStepTrackerAvailable,
+  getNativeSteps,
+  startNativeSession,
+  pauseNativeSession,
+  resumeNativeSession,
+  stopNativeSession,
+} from '../native/stepTracker';
 
 /**
  * Walk / Run session tracker.
  *
- * HONEST BACKGROUND LIMIT (do not promise more than this):
- * Expo's Pedometer does NOT deliver updates while the app is in the
- * background ("Pedometer updates will not be delivered while the app is
- * in the background" — Expo docs), and getStepCountAsync is iOS-only,
- * so on Android steps taken while the app is fully closed cannot be
- * recovered by this code. A session therefore counts live while the app
- * is open. If the app is closed mid-session, the session is restored as
- * PAUSED on reopen (steps taken while closed are not counted), and the
- * user taps Resume to keep tracking. A true always-on background step
- * counter on Android needs a native foreground service or Health
- * Connect — that is a separate native build, not a JS change.
+ * Background tracking, by platform (this is the whole point of the
+ * native service added with this change):
+ * - Android dev build: a foreground service (StepTrackerService) keeps
+ *   the hardware step counter listener alive when the app is minimised
+ *   or the screen is locked, and writes session steps to
+ *   SharedPreferences. A session that was active when the app closed is
+ *   therefore restored as ACTIVE, not paused, and its steps include
+ *   steps taken while the app was closed.
+ * - iOS: there is no equivalent Expo background pedometer. The system
+ *   Health app still counts while the app is backgrounded, and
+ *   Pedometer.getStepCountAsync (iOS-only) recovers the steps taken
+ *   between the last JS update and reopen, so an active session is
+ *   restored as ACTIVE with that delta added.
+ * - Expo Go / no native service: the old behaviour remains — the
+ *   session is restored as PAUSED, because steps taken while closed
+ *   genuinely were not counted.
  *
- * What this hook does give the user: an explicit Start Walk / Start Run
- * session with live steps, time, distance and calorie estimates, a
- * pause/resume, a saved session history, and steps that are already
- * part of the daily total via usePedometer (so session steps are NOT
- * posted to /analytics/steps again here — that would double-count).
+ * Session steps are NOT posted to /analytics/steps again here — they
+ * are already part of the daily total via usePedometer (native service
+ * or foreground watch), so posting them again would double-count.
+ * The backend API is unchanged.
  */
 
 export type SessionType = 'walk' | 'run';
@@ -37,6 +50,8 @@ export interface ActiveSession {
   sessionSteps: number;
   /** true when the app was closed mid-session and the session came back paused */
   wasInterrupted?: boolean;
+  /** ms timestamp of the last step update — used for iOS background recovery */
+  lastStepUpdateAt?: number;
 }
 
 export interface SessionRecord {
@@ -75,6 +90,10 @@ export const useWalkRunSession = () => {
   const savedStepsRef = useRef<number>(0);
   const sessionRef = useRef<ActiveSession | null>(null);
   sessionRef.current = session;
+  // True only when this session is being counted by the native service
+  // (not the Expo watch). It is a ref, not state, because it must not
+  // trigger a re-render and must survive inside callbacks.
+  const nativeSessionRef = useRef<boolean>(false);
 
   const persistActive = useCallback(async (value: ActiveSession | null) => {
     try {
@@ -111,7 +130,7 @@ export const useWalkRunSession = () => {
           const next = savedStepsRef.current + result.steps;
           setSession((prev) => {
             if (!prev) return prev;
-            const updated = { ...prev, sessionSteps: next };
+            const updated = { ...prev, sessionSteps: next, lastStepUpdateAt: Date.now() };
             // Persist so a reopen restores the count (as paused, see below).
             AsyncStorage.setItem(ACTIVE_KEY, JSON.stringify(updated)).catch(() => {});
             return updated;
@@ -126,9 +145,16 @@ export const useWalkRunSession = () => {
     [stopWatch]
   );
 
-  // Load saved session + history on mount. A session that was 'active'
-  // when the app closed is restored as PAUSED: its steps were not counted
-  // while the app was closed, so resuming must not pretend they were.
+  // Load saved session + history on mount, recovering background steps
+  // wherever the platform actually counted them:
+  // 1. Android native service: the service kept counting, so restore
+  //    as ACTIVE with the service's session steps and elapsed time.
+  // 2. iOS: HealthKit counted while backgrounded; getStepCountAsync
+  //    (iOS-only) recovers steps since the last JS update, so restore
+  //    as ACTIVE with that delta added.
+  // 3. Anything else (Expo Go, no sensor): restore as PAUSED, because
+  //    steps taken while closed genuinely were not counted — resuming
+  //    must not pretend they were.
   useEffect(() => {
     const load = async () => {
       try {
@@ -138,6 +164,49 @@ export const useWalkRunSession = () => {
         if (rawActive) {
           const saved: ActiveSession = JSON.parse(rawActive);
           if (saved.status === 'active') {
+            if (isNativeStepTrackerAvailable) {
+              const status = await getNativeSteps();
+              if (status?.sessionActive) {
+                nativeSessionRef.current = true;
+                const restored: ActiveSession = {
+                  ...saved,
+                  type: status.sessionType ?? saved.type,
+                  status: status.sessionPaused ? 'paused' : 'active',
+                  startedAt: status.sessionPaused ? null : Date.now(),
+                  accumulatedSeconds: status.elapsedSeconds,
+                  sessionSteps: status.sessionSteps,
+                  wasInterrupted: false,
+                };
+                setSession(restored);
+                await persistActive(restored);
+                return;
+              }
+            }
+            if (Platform.OS === 'ios' && saved.lastStepUpdateAt) {
+              try {
+                const result = await Pedometer.getStepCountAsync(
+                  new Date(saved.lastStepUpdateAt),
+                  new Date()
+                );
+                const delta = result?.steps ?? 0;
+                const elapsedBeforeBackground =
+                  saved.accumulatedSeconds +
+                  (saved.startedAt ? (saved.lastStepUpdateAt - saved.startedAt) / 1000 : 0);
+                const restored: ActiveSession = {
+                  ...saved,
+                  status: 'active',
+                  startedAt: Date.now(),
+                  accumulatedSeconds: elapsedBeforeBackground,
+                  sessionSteps: saved.sessionSteps + delta,
+                  wasInterrupted: false,
+                };
+                setSession(restored);
+                await persistActive(restored);
+                return;
+              } catch {
+                // Fall through to the paused restore below.
+              }
+            }
             const interrupted: ActiveSession = {
               ...saved,
               status: 'paused',
@@ -157,6 +226,23 @@ export const useWalkRunSession = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // While a native session is active, poll the service for its steps
+  // (1s, matching the timer tick). Only set state when the count
+  // changed, so a tick with no new steps does not re-render.
+  useEffect(() => {
+    if (session?.status !== 'active' || !nativeSessionRef.current) return;
+    const id = setInterval(async () => {
+      const status = await getNativeSteps();
+      if (!status?.sessionActive) return;
+      setSession((prev) =>
+        prev && prev.sessionSteps !== status.sessionSteps
+          ? { ...prev, sessionSteps: status.sessionSteps, lastStepUpdateAt: Date.now() }
+          : prev
+      );
+    }, 1000);
+    return () => clearInterval(id);
+  }, [session?.status]);
+
   // Live timer tick while active.
   const [now, setNow] = useState<number>(Date.now());
   useEffect(() => {
@@ -168,6 +254,24 @@ export const useWalkRunSession = () => {
   const startSession = useCallback(
     async (type: SessionType) => {
       setError('');
+      // Prefer the native service: it keeps counting in the background.
+      // Only fall back to the Expo watch if the service is unavailable.
+      if (isNativeStepTrackerAvailable) {
+        const ok = await startNativeSession(type);
+        if (ok) {
+          nativeSessionRef.current = true;
+          const next: ActiveSession = {
+            type,
+            status: 'active',
+            startedAt: Date.now(),
+            accumulatedSeconds: 0,
+            sessionSteps: 0,
+          };
+          setSession(next);
+          await persistActive(next);
+          return;
+        }
+      }
       const ok = await startWatch(0);
       if (!ok) return;
       const next: ActiveSession = {
@@ -187,9 +291,16 @@ export const useWalkRunSession = () => {
     const current = sessionRef.current;
     if (!current || current.status !== 'active') return;
     stopWatch();
-    const elapsed = current.startedAt
+    let elapsed = current.startedAt
       ? current.accumulatedSeconds + (Date.now() - current.startedAt) / 1000
       : current.accumulatedSeconds;
+    if (nativeSessionRef.current) {
+      await pauseNativeSession();
+      // Trust the service's elapsed time over the JS timer, which stops
+      // advancing while the JS process is suspended.
+      const status = await getNativeSteps();
+      if (status) elapsed = status.elapsedSeconds;
+    }
     const next: ActiveSession = { ...current, status: 'paused', startedAt: null, accumulatedSeconds: elapsed };
     setSession(next);
     await persistActive(next);
@@ -199,6 +310,26 @@ export const useWalkRunSession = () => {
     const current = sessionRef.current;
     if (!current || current.status !== 'paused') return;
     setError('');
+    // Only resume natively if this session was started natively. A session
+    // started with the Expo watch must resume with the watch, or its
+    // accumulated steps (which the service never saw) would reset to 0.
+    if (nativeSessionRef.current) {
+      const ok = await resumeNativeSession();
+      if (ok) {
+        nativeSessionRef.current = true;
+        const status = await getNativeSteps();
+        const next: ActiveSession = {
+          ...current,
+          status: 'active',
+          startedAt: Date.now(),
+          wasInterrupted: false,
+          sessionSteps: status?.sessionSteps ?? current.sessionSteps,
+        };
+        setSession(next);
+        await persistActive(next);
+        return;
+      }
+    }
     const ok = await startWatch(current.sessionSteps);
     if (!ok) return;
     const next: ActiveSession = { ...current, status: 'active', startedAt: Date.now(), wasInterrupted: false };
@@ -210,19 +341,25 @@ export const useWalkRunSession = () => {
     const current = sessionRef.current;
     if (!current) return;
     stopWatch();
+    let finalSteps = current.sessionSteps;
+    if (nativeSessionRef.current) {
+      const nativeSteps = await stopNativeSession();
+      if (nativeSteps != null) finalSteps = nativeSteps;
+      nativeSessionRef.current = false;
+    }
     const elapsed = current.startedAt
       ? current.accumulatedSeconds + (Date.now() - current.startedAt) / 1000
       : current.accumulatedSeconds;
     const durationSeconds = Math.floor(elapsed);
-    const distanceKm = Number(((current.sessionSteps * STRIDE_M[current.type]) / 1000).toFixed(2));
-    const calories = Math.round(current.sessionSteps * CAL_PER_STEP[current.type]);
+    const distanceKm = Number(((finalSteps * STRIDE_M[current.type]) / 1000).toFixed(2));
+    const calories = Math.round(finalSteps * CAL_PER_STEP[current.type]);
     const record: SessionRecord = {
       id: `${Date.now()}`,
       type: current.type,
       startedAt: current.startedAt ? current.startedAt - current.accumulatedSeconds * 1000 : Date.now() - durationSeconds * 1000,
       endedAt: Date.now(),
       durationSeconds,
-      steps: current.sessionSteps,
+      steps: finalSteps,
       distanceKm,
       calories,
     };

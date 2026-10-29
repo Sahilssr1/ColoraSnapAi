@@ -3,6 +3,12 @@ import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
 import { apiClient } from '../api/client';
+import {
+  isNativeStepTrackerAvailable,
+  ensureTrackingPermissions,
+  startNativeTracking,
+  getNativeSteps,
+} from '../native/stepTracker';
 
 const STORAGE_KEY_STEPS = '@calora_today_steps';
 const STORAGE_KEY_DATE = '@calora_steps_date';
@@ -21,6 +27,12 @@ export const usePedometer = (initialSteps: number = 0) => {
   const [currentStepCount, setCurrentStepCount] = useState<number>(0);
   const [pastStepCount, setPastStepCount] = useState<number>(initialSteps);
   const [dailyHistory, setDailyHistory] = useState<StepRecord[]>([]);
+  // Native foreground-service totals (Android dev build only). While the
+  // service is the source of truth, the Expo watch below is not started,
+  // so the two can never race and double-count.
+  const [nativeTodaySteps, setNativeTodaySteps] = useState<number>(0);
+  const [nativeFailed, setNativeFailed] = useState<boolean>(false);
+  const nativeFailCountRef = useRef<number>(0);
 
   const lastSyncCountRef = useRef<number>(initialSteps);
   // Keep the latest pastStepCount in a ref so the live subscription does
@@ -35,6 +47,12 @@ export const usePedometer = (initialSteps: number = 0) => {
 
   // Sync to PostgreSQL DB (Debounced)
   const syncStepsToBackend = useCallback(async (steps: number) => {
+    // Never post a LOWER total than already synced: the backend stores
+    // an absolute daily total, so a watch restart / service restart that
+    // reports a smaller number used to overwrite a larger real total
+    // with a regression. The backend also guards this now, but never
+    // sending the regression is the first line of defence.
+    if (steps < lastSyncCountRef.current) return;
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       await apiClient.post('/analytics/steps', {
@@ -62,6 +80,55 @@ export const usePedometer = (initialSteps: number = 0) => {
       syncStepsToBackend(steps);
     }, 3000);
   }, [syncStepsToBackend]);
+
+  // The dashboard total arrives AFTER mount (it is a network query), so
+  // initialSteps changes from 0 to the real backend total. useState only
+  // reads the first value, so without this the hook kept counting from 0
+  // all day and its first sync overwrote the backend total with a smaller
+  // number. Take the max, never a lower value.
+  useEffect(() => {
+    setPastStepCount((prev) => Math.max(prev, initialSteps));
+    lastSyncCountRef.current = Math.max(lastSyncCountRef.current, initialSteps);
+  }, [initialSteps]);
+
+  // Native foreground-service tracking (Android dev build only).
+  // Polling, not an event bridge: the service writes totals to
+  // SharedPreferences, JS reads them every 2 seconds, and state is only
+  // updated when the value actually changed — so polling cannot cause
+  // the re-render flicker that per-step setState used to cause in the
+  // header. On any repeated failure, fall back to the Expo watch.
+  useEffect(() => {
+    if (!isNativeStepTrackerAvailable) return;
+    let stopped = false;
+    let interval: NodeJS.Timeout | null = null;
+    const boot = async () => {
+      const granted = await ensureTrackingPermissions();
+      if (stopped || !granted) return;
+      const started = await startNativeTracking();
+      if (stopped || !started) return;
+      interval = setInterval(async () => {
+        const status = await getNativeSteps();
+        if (stopped) return;
+        if (!status || !status.sensorAvailable) {
+          nativeFailCountRef.current += 1;
+          if (nativeFailCountRef.current >= 3) setNativeFailed(true);
+          return;
+        }
+        nativeFailCountRef.current = 0;
+        setIsSensorTracking(true);
+        setNativeTodaySteps((prev) => (prev === status.todaySteps ? prev : status.todaySteps));
+        const total = Math.max(status.todaySteps, initialSteps);
+        if (total - lastSyncCountRef.current >= 5) {
+          scheduleDbSync(total);
+        }
+      }, 2000);
+    };
+    boot();
+    return () => {
+      stopped = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [initialSteps, scheduleDbSync]);
 
   // Load saved historical days
   useEffect(() => {
@@ -150,8 +217,12 @@ export const usePedometer = (initialSteps: number = 0) => {
   // Live step tracking while app is open. NOTE: this is foreground-only
   // by Expo's design — Pedometer updates are not delivered while the app
   // is in the background, and getStepCountAsync (the iOS catch-up path
-  // above) is not supported on Android.
+  // above) is not supported on Android. On Android dev builds the native
+  // foreground service above is the source of truth instead, so the
+  // watch is skipped there (starting both would race and double-count);
+  // it only starts if the native service has failed.
   useEffect(() => {
+    if (isNativeStepTrackerAvailable && !nativeFailed) return;
     const startLiveTracking = async () => {
       try {
         if (!isPedometerAvailable) return;
@@ -181,7 +252,7 @@ export const usePedometer = (initialSteps: number = 0) => {
         clearTimeout(syncTimeoutRef.current);
       }
     };
-  }, [isPedometerAvailable, scheduleDbSync]);
+  }, [isPedometerAvailable, nativeFailed, scheduleDbSync]);
 
   // Toggle Live Walk Simulation (for testing walking live on simulator/desk)
   const toggleWalkSimulation = useCallback(() => {
@@ -221,7 +292,18 @@ export const usePedometer = (initialSteps: number = 0) => {
     } catch {}
   };
 
-  const totalSteps = pastStepCount + currentStepCount;
+  // Native reconciliation: the service's today total is steps since its
+  // first start today (persisted in SharedPreferences across restarts),
+  // while initialSteps is the last backend-synced total. Taking the max
+  // avoids double-counting (never add them) and avoids regressing to a
+  // smaller number after a service restart. Steps taken before the
+  // service ever started today cannot be recovered on Android without
+  // Health Connect — that is a platform limit, not a counting bug, and
+  // it is the same limit the old foreground-only watch had.
+  const totalSteps =
+    isNativeStepTrackerAvailable && !nativeFailed
+      ? Math.max(nativeTodaySteps, initialSteps)
+      : pastStepCount + currentStepCount;
   const burnedCalories = Math.round(totalSteps * 0.04);
   const distanceKm = Number((totalSteps * 0.000762).toFixed(2)); // Average 0.762m stride length
 

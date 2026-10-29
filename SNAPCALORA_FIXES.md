@@ -251,3 +251,116 @@ Both are now documented limitations, not silent fake readings.
 Verification: all 11 changed/new mobile files pass a TypeScript
 transpile check. Not tested on a real device. Pushed 2026-10-29 on
 his yes (commit 22b6588, verified as remote HEAD).
+
+## 8. Header flicker + live/background tracking — 2026-10-30 (LOCAL, NOT PUSHED)
+
+Root causes found by reading the whole app, not by guessing:
+
+### Header flicker on launch
+1. **HomeScreen mounted twice.** TabNavigator used HomeScreen as the
+   component for both HomeTab and the centre ScanTab (whose button is
+   custom and opens Camera). Bottom tabs render their screens on
+   launch, so there were two pedometer subscriptions, two walk/run
+   timers, two dashboard queries and two backend step syncs racing
+   each other, re-rendering the whole screen — header included — on
+   every step and every timer tick. ScanTab now renders a null
+   component; the centre button is unchanged.
+2. **The header re-rendered on every step/timer tick.** HomeScreen
+   passed freshly-created inline callbacks to AppleHealthHeader on
+   every render, so even a memo would not have held. The header is
+   now `React.memo`, Home passes stable `useCallback` callbacks and a
+   memoised user name, so step/timer updates below it no longer
+   re-composite the header's gradient. Steps, rings and the session
+   card still update live — only the header stops re-rendering.
+
+### Live tracking not working correctly
+3. **Dashboard total arrived after mount, hook ignored it.**
+   `usePedometer(dbSteps)` read `initialSteps` only as its initial
+   state, so it counted from 0 all day, and its first sync could
+   overwrite the backend total with a smaller number. The hook now
+   takes the max of the stored total and the backend total whenever
+   the backend total arrives, and never syncs a lower total than
+   already synced.
+4. **Backend could regress the daily total.** `logSteps` stored an
+   absolute daily total but overwrote it with whatever the client
+   sent, so a restarted watch/service reporting a smaller number
+   moved the stored total backwards and the Home count visibly
+   jumped down. `logSteps` now stores `max(existing, new)`. Route,
+   request and response are unchanged — no API change.
+5. **Two more small crash/validation bugs:** Register crashed on a
+   corrupted pending-profile JSON (now falls back to defaults), and
+   Profile Save sent NaN/null when a field was emptied (now validated
+   locally with a clear message).
+
+### Background tracking (the actual new feature)
+6. **Android foreground service** — new native code, because no JS
+   change can do this: Expo's pedometer stops delivering while the
+   app is backgrounded.
+   - `mobile/android/app/src/main/java/com/calora/ai/StepTrackerService.kt`:
+     a foreground service listening to `TYPE_STEP_COUNTER` (low-power
+     hardware sensor), writing daily and session totals to
+     SharedPreferences, with a persistent "SnapCalora is tracking"
+     notification that taps back into the app. It sends nothing to
+     any server and collects no location.
+   - `StepTrackerModule.kt` / `StepTrackerPackage.kt`: old-architecture
+     native module (this project has `newArchEnabled=false`),
+     registered in `MainApplication.kt`. JS talks to it only via
+     `mobile/src/native/stepTracker.ts`.
+   - Permissions/service in `AndroidManifest.xml` and `app.json`:
+     `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_HEALTH` (Android 14+
+     health-type service), `POST_NOTIFICATIONS`, plus the existing
+     `ACTIVITY_RECOGNITION` / `BODY_SENSORS`. Duplicate CAMERA entry
+     in `app.json` removed.
+   - JS behaviour: `usePedometer` starts the service on Home mount
+     and polls it every 2s, updating state only when the count
+     changed (so polling does not re-introduce flicker); the Expo
+     watch is skipped while the service is healthy and only starts
+     after 3 consecutive native failures or on a device with no step
+     sensor. `useWalkRunSession` starts/pauses/resumes/stops sessions
+     in the service, polls session steps every 1s while active, and —
+     crucially — a session that was active when the app closed is
+     restored as ACTIVE with the service's steps, not as Paused.
+     Session steps are still not posted to `/analytics/steps` again
+     (they are already in the daily total), so there is no
+     double-count. Backend routes, payloads and the daily-total API
+     are unchanged.
+   - **Prebuild warning:** `android/` is committed and tracked, and
+     the service lives there. A `expo prebuild --clean` will regenerate
+     `android/` and drop the service/manifest entries — re-apply
+     §8's native files after a clean prebuild, or build from the
+     committed `android/` directory.
+7. **iOS background recovery:** there is no Expo background pedometer
+   on iOS either. The system Health app still counts while the app
+   is backgrounded, and `Pedometer.getStepCountAsync` (iOS-only)
+   recovers steps since the last JS update (`lastStepUpdateAt`, now
+   stored on the session), so an active session is restored as
+   ACTIVE with that delta. In Expo Go (no native service) the old
+   Paused restore remains, because those steps genuinely were not
+   counted.
+8. **Play policy note for the next release:** a health-type
+   foreground service needs a Play declaration for foreground-service
+   use; the service's notification and the in-app note state what it
+   does. Also tell testers to allow "Unrestricted" battery for the
+   app on aggressive OEM skins, or the OS may still kill the service.
+
+### Verification done locally (2026-10-30)
+- All changed/new TS/TSX files pass a TypeScript transpile check;
+  `AndroidManifest.xml` parses as XML, `app.json` parses as JSON,
+  Kotlin files have balanced braces/parens. There is no Android SDK
+  or device in this VM, so the native service could NOT be compiled
+  or run here — that is a hard limit, not a pass. The first real
+  build must be `expo run:android` (dev build, not Expo Go) on a
+  physical device.
+- Test on a real Android device, in order: (1) launch, watch the
+  header for 30s while walking — it must stay still while the step
+  number below it updates; (2) start a Walk, minimise the app, walk
+  50+ steps, lock the screen, walk more, reopen — the session must
+  still be Active and the count must include the locked-screen
+  steps, and the persistent notification must be visible while
+  minimised; (3) pause, resume, stop & save, check Recent sessions;
+  (4) close the app mid-session, reopen — session must come back
+  Active (not Paused) with background steps included; (5) pull to
+  refresh on Home and confirm the daily total never jumps down;
+  (6) repeat (2) in Expo Go and confirm it degrades to
+  foreground-only instead of crashing.
+- NOT pushed — push only on your yes.
