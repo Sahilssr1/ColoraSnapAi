@@ -135,7 +135,7 @@ Expo Go has no native Google Sign-In module and will always show the
 4. Build the Android release (`versionCode` 7 for the next Play upload)
    and confirm Play reports target SDK 36.
 
-## 6. Background walking / running tracker — checked 2026-10-29 (NOT pushed yet)
+## 6. Background walking / running tracker — checked 2026-10-29, PUSHED 2026-10-29 (commit 4d2c3e6)
 
 Verdict: background tracking was NOT working, and it was not a bug in
 one line — it was missing entirely. Evidence: no `expo-task-manager`,
@@ -148,7 +148,7 @@ Expo's own docs state pedometer updates are not delivered while the
 app is in the background, and `getStepCountAsync` is iOS-only — so on
 Android, steps taken while the app was closed could not be recovered.
 
-What was built instead (local, uncommitted at time of writing):
+What was built instead:
 - `mobile/src/hooks/useWalkRunSession.ts` — Start Walk / Start Run
   session: live steps, elapsed time, distance (walk 0.762 m/step,
   run 1.0 m/step, estimates), calories (walk 0.04, run 0.06 per step,
