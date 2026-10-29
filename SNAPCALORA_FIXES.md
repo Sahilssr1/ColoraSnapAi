@@ -187,7 +187,7 @@ reopen, and confirm it comes back Paused, not as if it kept counting.
   `gemini-1.5-flash` call, no hardcoded keystore password in
   `build.gradle`.
 
-## 7. General bug + UI audit — 2026-10-29 (LOCAL, NOT PUSHED)
+## 7. General bug + UI audit — 2026-10-29, PUSHED 2026-10-29 (commit 22b6588)
 
 Found and fixed, all in the mobile app:
 
@@ -249,5 +249,5 @@ are server-time based, so "today" can shift near midnight in IST.
 Both are now documented limitations, not silent fake readings.
 
 Verification: all 11 changed/new mobile files pass a TypeScript
-transpile check. Not tested on a real device, and NOT pushed —
-push only on your yes.
+transpile check. Not tested on a real device. Pushed 2026-10-29 on
+his yes (commit 22b6588, verified as remote HEAD).
