@@ -252,7 +252,7 @@ Verification: all 11 changed/new mobile files pass a TypeScript
 transpile check. Not tested on a real device. Pushed 2026-10-29 on
 his yes (commit 22b6588, verified as remote HEAD).
 
-## 8. Header flicker + live/background tracking — 2026-10-30 (LOCAL, NOT PUSHED)
+## 8. Header flicker + live/background tracking — 2026-10-30, PUSHED 2026-10-30 (commit 6e4c9b3, after resolving remote merge e7f454c's conflict markers in commit d379e4d)
 
 Root causes found by reading the whole app, not by guessing:
 
