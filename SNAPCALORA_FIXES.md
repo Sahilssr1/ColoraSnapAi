@@ -1,9 +1,8 @@
-# SnapCalora AI — fixes (prepared 2026-10-29, NOT pushed yet)
+# SnapCalora AI — fixes (prepared 2026-10-29, PUSHED 2026-10-29)
 
-Changes are in the local clone at `~/workspace/ColoraSnapAi` (uncommitted,
-except the keystore removal which is staged). Nothing has been pushed to
-GitHub and nothing has been deployed to Render. Push/deploy only after you
-approve, and only after the Render env vars in step 1 are set.
+Pushed to GitHub as commit `818a0b1` (main) on 2026-10-29, verified via
+`git ls-remote`. Nothing has been deployed to Render yet — deploy only
+after the Render env vars in step 1 are set.
 
 ## 0. What was actually broken (verified, not guessed)
 
