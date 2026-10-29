@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 import { store } from './src/redux/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
 import { useTheme } from './src/theme/useTheme';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -69,7 +70,8 @@ const AppContent: React.FC = () => {
 
   return (
     <PaperProvider theme={paperTheme}>
-      <NavigationContainer 
+      <NavigationContainer
+        ref={navigationRef}
         theme={navTheme}
         onReady={() => {
           setTimeout(() => {

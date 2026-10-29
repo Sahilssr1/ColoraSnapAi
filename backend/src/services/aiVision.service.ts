@@ -56,6 +56,7 @@ export class AiVisionService {
   async scanFoodImage(base64Image: string, mimeType = 'image/webp'): Promise<ScanImageResult> {
     logger.info('📸 Starting AI Food Vision Analysis...');
 
+<<<<<<< HEAD
     let lastError: unknown = null;
 
     // Resolve keys, intelligently detecting key prefixes (gsk_ = Groq Cloud, xai- = xAI Grok)
@@ -87,6 +88,26 @@ export class AiVisionService {
     }
 
     // 3. Try Google Gemini Vision if key is present
+=======
+    // Grok first (per the owner's choice), then Gemini, then OpenAI.
+    // NOTE: there is deliberately NO fake fallback any more. The old code
+    // returned the same hardcoded "salmon bowl" for every photo whenever
+    // the AI call failed, which looked like the API "working" while giving
+    // wrong nutrition data. A failed scan must now fail loudly so the
+    // real upstream error (bad key, retired model, quota) can be fixed.
+    let lastError: unknown = null;
+
+    if (env.GROK_API_KEY) {
+      try {
+        const grokResult = await this.callGrokVision(base64Image);
+        if (grokResult) return grokResult;
+      } catch (err) {
+        lastError = err;
+        logger.warn('Grok Vision API error:', (err as any)?.response?.data || (err as Error).message);
+      }
+    }
+
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
     if (env.GEMINI_API_KEY && env.GEMINI_API_KEY !== 'AIzaSyDemoKeyForCaloraFoodVision') {
       try {
         const geminiResult = await this.callGeminiVision(base64Image, mimeType);
@@ -97,8 +118,12 @@ export class AiVisionService {
       }
     }
 
+<<<<<<< HEAD
     // 4. Try OpenAI Vision if key is present
     if (env.OPENAI_API_KEY && !env.OPENAI_API_KEY.startsWith('xai-') && !env.OPENAI_API_KEY.startsWith('gsk_')) {
+=======
+    if (env.OPENAI_API_KEY) {
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
       try {
         const openAiResult = await this.callOpenAiVision(base64Image);
         if (openAiResult) return openAiResult;
@@ -108,19 +133,29 @@ export class AiVisionService {
       }
     }
 
+<<<<<<< HEAD
     if (!groqKey && !grokKey && !env.GEMINI_API_KEY && !env.OPENAI_API_KEY) {
       throw new AppError('No food-scan AI is configured on the server. Set GROQ_API_KEY (or GROK_API_KEY) in Render env vars.', 503);
+=======
+    if (!env.GROK_API_KEY && !env.GEMINI_API_KEY && !env.OPENAI_API_KEY) {
+      throw new AppError('No food-scan AI is configured on the server. Set GROK_API_KEY (or GEMINI_API_KEY) in Render env vars.', 503);
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
     }
     const upstream = (lastError as any)?.response?.data?.error?.message || (lastError as Error)?.message || 'unknown error';
     throw new AppError(`Food-scan AI failed: ${upstream}. Check the API key and model in Render env vars, then retry.`, 502);
   }
 
   private parseVisionJson(text: string): any {
+<<<<<<< HEAD
     // Model may wrap JSON in ```json fences even with json_object mode.
+=======
+    // Grok/OpenAI may wrap JSON in ```json fences even with json_object mode.
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
     const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     return JSON.parse(cleaned);
   }
 
+<<<<<<< HEAD
   private async callGroqVision(base64Image: string, apiKey: string): Promise<ScanImageResult | null> {
     const prompt = this.getVisionPrompt();
     const model = env.GROQ_MODEL || 'openai/gpt-oss-120b';
@@ -195,6 +230,14 @@ export class AiVisionService {
       'https://api.x.ai/v1/chat/completions',
       {
         model,
+=======
+  private async callGrokVision(base64Image: string): Promise<ScanImageResult | null> {
+    const prompt = this.getVisionPrompt();
+    const response = await axios.post(
+      'https://api.x.ai/v1/chat/completions',
+      {
+        model: env.GROK_MODEL,
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
         messages: [
           {
             role: 'user',
@@ -202,18 +245,30 @@ export class AiVisionService {
               { type: 'text', text: prompt },
               {
                 type: 'image_url',
+<<<<<<< HEAD
                 image_url: { url: imageUrl, detail: 'high' },
+=======
+                image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: 'high' },
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
               },
             ],
           },
         ],
         response_format: { type: 'json_object' },
         temperature: 0.2,
+<<<<<<< HEAD
         max_tokens: 1500,
       },
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
+=======
+        max_tokens: 1200,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${env.GROK_API_KEY}`,
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
           'Content-Type': 'application/json',
         },
         timeout: 30000,
@@ -229,6 +284,11 @@ export class AiVisionService {
     const prompt = this.getVisionPrompt();
 
     const response = await axios.post(
+<<<<<<< HEAD
+=======
+      // gemini-1.5-flash was retired by Google (Sept 2025) and now returns
+      // 404, which the old code silently swallowed into the fake fallback.
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934
       `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         contents: [

@@ -90,15 +90,15 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Active Energy & Movement',
       icon: <Flame color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#FF3B30',
-      mainVal: `${consumedCals || 450}`,
+      mainVal: `${consumedCals}`,
       mainUnit: 'kcal',
       status: 'Active burn calculated from metabolic baseline',
       metrics: [
         { label: 'Active Calories', value: `${consumedCals} kcal`, color: '#FF3B30' },
-        { label: 'Exercise', value: '28 min', color: '#34C759' },
-        { label: 'Stand Hours', value: '9 hr', color: '#007AFF' },
+        { label: 'Exercise', value: `${Math.round((dashboard?.steps?.count || 0) / 100)} min (est.)`, color: '#34C759' },
+        { label: 'Steps goal', value: `${Math.min(100, Math.round(((dashboard?.steps?.count || 0) / 10000) * 100))}% of 10,000`, color: '#007AFF' },
       ],
-      sparklineData: [30, 45, 60, 80, 55, 90, 75, 100],
+      sparklineData: [],
       description: 'Your activity tracks active energy burned through movement, workouts, and basal metabolic rate.',
     },
     body: {
@@ -115,7 +115,7 @@ export const SearchScreen = ({ navigation }: any) => {
         { label: 'Height', value: `${userHeight} cm`, color: '#007AFF' },
         { label: 'BMI', value: `${userBmi.toFixed(1)}`, color: '#34C759' },
       ],
-      sparklineData: [72, 71.8, 71.5, 71.2, 70.8, 70.4, 70.0],
+      sparklineData: [],
       description: 'Body measurements help calculate accurate caloric targets, BMR, and track healthy muscle/fat evolution.',
     },
     cycle: {
@@ -124,15 +124,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Hormonal & Period Prediction',
       icon: <HeartHandshake color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#FF2D55',
-      mainVal: 'Day 14',
-      mainUnit: 'Follicular',
-      status: 'Regular cycle length (28 days)',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not measured yet — no cycle data is collected',
       metrics: [
-        { label: 'Current Phase', value: 'Ovulation window', color: '#FF2D55' },
-        { label: 'Next Period in', value: '14 days', color: '#AF52DE' },
-        { label: 'Cycle Duration', value: '28 days', color: '#34C759' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [20, 40, 70, 95, 80, 50, 30],
+      sparklineData: [],
       description: 'Tracks cycle stages to recommend optimal macronutrient timing and hydration adjustments.',
     },
     hearing: {
@@ -141,15 +139,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Environmental & Audio Safety',
       icon: <Ear color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#AF52DE',
-      mainVal: '62',
-      mainUnit: 'dB',
-      status: 'OK • Safe listening exposure',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not measured yet — no audio sensor data is collected',
       metrics: [
-        { label: 'Headphone Audio', value: '62 dB (Safe)', color: '#34C759' },
-        { label: 'Environmental Noise', value: '55 dB', color: '#007AFF' },
-        { label: 'Weekly Exposure', value: '22% of limit', color: '#AF52DE' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [50, 58, 62, 55, 68, 60, 62],
+      sparklineData: [],
       description: 'Monitors audio volume levels to ensure safe exposure throughout the day.',
     },
     heart: {
@@ -158,15 +154,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Heart Rate & HRV Telemetry',
       icon: <Heart color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#FF2D55',
-      mainVal: '68',
-      mainUnit: 'BPM',
-      status: 'Resting Heart Rate in optimal athletic range',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not measured yet — no heart-rate sensor data is collected',
       metrics: [
-        { label: 'Resting HR', value: '68 BPM', color: '#FF2D55' },
-        { label: 'Walking Average', value: '94 BPM', color: '#FF9500' },
-        { label: 'Heart Rate Variability', value: '58 ms', color: '#34C759' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [64, 68, 72, 69, 66, 68, 67],
+      sparklineData: [],
       description: 'Your resting heart rate is an indicator of cardiovascular fitness and metabolic recovery state.',
     },
     medications: {
@@ -175,15 +169,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Supplements & Daily Intake',
       icon: <Pill color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#007AFF',
-      mainVal: '3 of 3',
-      mainUnit: 'taken',
-      status: 'All daily supplements logged today',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not tracked yet — no medication log exists in this app',
       metrics: [
-        { label: 'Vitamin D3 + K2', value: 'Logged (Morning)', color: '#34C759' },
-        { label: 'Omega-3 Fish Oil', value: 'Logged (Lunch)', color: '#007AFF' },
-        { label: 'Magnesium Glycinate', value: 'Scheduled (Night)', color: '#AF52DE' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [100, 100, 100, 100, 100, 100, 100],
+      sparklineData: [],
       description: 'Keeps track of scheduled dietary supplements and micro-nutrient boosters.',
     },
     mental: {
@@ -192,15 +184,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'State of Mind & Mindfulness',
       icon: <Brain color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#5856D6',
-      mainVal: 'Balanced',
-      mainUnit: 'State',
-      status: 'High cognitive focus & low cortisol flags',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not measured yet — no mood or mindfulness log exists',
       metrics: [
-        { label: 'Mindful Minutes', value: '15 min today', color: '#5856D6' },
-        { label: 'Mood Log', value: 'Pleasant & Calm', color: '#34C759' },
-        { label: 'Recovery Balance', value: '92% Optimal', color: '#007AFF' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [70, 75, 80, 85, 90, 88, 92],
+      sparklineData: [],
       description: 'Tracks cognitive recovery, stress markers, and mindful reflection intervals.',
     },
     steps: {
@@ -217,7 +207,7 @@ export const SearchScreen = ({ navigation }: any) => {
         { label: 'Active Burn', value: `${dashboard?.steps?.burnedCalories || Math.round((dashboard?.steps?.count || 0) * 0.04)} kcal`, color: '#FF3B30' },
         { label: 'Distance', value: `${((dashboard?.steps?.count || 0) * 0.000762).toFixed(2)} km`, color: '#34C759' },
       ],
-      sparklineData: [4500, 6200, 8100, 9400, 7800, 10200, dashboard?.steps?.count || 0],
+      sparklineData: [],
       description: 'Tracks real-time footsteps from phone motion sensors and syncs your daily activity automatically.',
     },
     mobility: {
@@ -226,15 +216,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Steadiness, Speed & Cadence',
       icon: <Footprints color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#FF9500',
-      mainVal: 'OK',
-      mainUnit: 'Steadiness',
-      status: 'Normal stride symmetry & cadence verified',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not measured yet — no stride sensor data is collected',
       metrics: [
-        { label: 'Walking Speed', value: '4.8 km/h', color: '#34C759' },
-        { label: 'Step Length', value: '72 cm', color: '#007AFF' },
-        { label: 'Walking Asymmetry', value: '1.2% (Excellent)', color: '#FF9500' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [92, 94, 95, 93, 96, 95, 96],
+      sparklineData: [],
       description: 'Evaluates your walking stability, stride balance, and lower body biomechanics.',
     },
     nutrition: {
@@ -251,7 +239,7 @@ export const SearchScreen = ({ navigation }: any) => {
         { label: 'Carbs', value: `${Math.round(dashboard?.summary?.carbsConsumed || 0)}g`, color: '#FF9500' },
         { label: 'Fat', value: `${Math.round(dashboard?.summary?.fatConsumed || 0)}g`, color: '#AF52DE' },
       ],
-      sparklineData: [1800, 1950, 2100, 1850, 2050, 1900, consumedCals || 2000],
+      sparklineData: [],
       description: 'Comprehensive nutritional tracking powered by AI vision and clinical nutrient databases.',
     },
     respiratory: {
@@ -260,15 +248,13 @@ export const SearchScreen = ({ navigation }: any) => {
       subtitle: 'Blood Oxygen & Respiratory Rate',
       icon: <Wind color="#FFFFFF" size={20} strokeWidth={2.2} />,
       color: '#5AC8FA',
-      mainVal: '98%',
-      mainUnit: 'SpO2',
-      status: 'Blood oxygen saturation in optimal range',
+      mainVal: '—',
+      mainUnit: '',
+      status: 'Not measured yet — no SpO2 sensor data is collected',
       metrics: [
-        { label: 'Oxygen Saturation', value: '98% (Normal)', color: '#5AC8FA' },
-        { label: 'Respiratory Rate', value: '14 breaths/min', color: '#34C759' },
-        { label: 'VO2 Max Estimate', value: '46.2 (Good)', color: '#007AFF' },
+        { label: 'Data source', value: 'Not connected', color: '#8E8E93' },
       ],
-      sparklineData: [98, 97, 98, 99, 98, 98, 98],
+      sparklineData: [],
       description: 'Monitors pulmonary efficiency, resting blood oxygen, and aerobic capacity.',
     },
     sleep: {
@@ -285,7 +271,7 @@ export const SearchScreen = ({ navigation }: any) => {
         { label: 'Deep Sleep', value: hasSleep ? `${dbSleep?.deepHours || (dbSleep!.hours * 0.22).toFixed(1)}h (22%)` : '--', color: '#34C759' },
         { label: 'Recovery Status', value: hasSleep && dbSleep!.score! >= 75 ? 'Optimal Rest' : 'Needs Sleep', color: '#007AFF' },
       ],
-      sparklineData: [85, 90, 88, 92, 94, 91, hasSleep ? dbSleep!.score! : 80],
+      sparklineData: [],
       description: 'Analyzes circadian rhythm, metabolic repair, and sleep efficiency.',
     },
   };
@@ -615,7 +601,6 @@ export const SearchScreen = ({ navigation }: any) => {
                   style={styles.modalActionBtn}
                   onPress={() => {
                     setSelectedCategory(null);
-                    navigation.navigate('Search');
                   }}
                 >
                   <Utensils color="#FFFFFF" size={18} style={{ marginRight: 6 }} />
@@ -628,7 +613,7 @@ export const SearchScreen = ({ navigation }: any) => {
                   style={styles.modalActionBtn}
                   onPress={() => {
                     setSelectedCategory(null);
-                    navigation.navigate('Analytics');
+                    navigation.navigate('MainTabs', { screen: 'AnalyticsTab' });
                   }}
                 >
                   <TrendingUp color="#FFFFFF" size={18} style={{ marginRight: 6 }} />
@@ -639,7 +624,7 @@ export const SearchScreen = ({ navigation }: any) => {
               {/* Clinical Explanation */}
               <GlassCard style={styles.modalAboutCard}>
                 <Text style={[styles.modalAboutTitle, { color: theme.textPrimary }]}>
-                  Clinical Health Overview
+                  Health Overview
                 </Text>
                 <Text style={[styles.modalAboutText, { color: theme.textSecondary }]}>
                   {selectedCategory.description}

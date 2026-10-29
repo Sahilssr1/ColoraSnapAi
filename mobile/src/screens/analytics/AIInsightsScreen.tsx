@@ -50,7 +50,7 @@ export const AIInsightsScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.scoreSub}>Clinical micronutrient & macro balance</Text>
             </View>
             <View style={styles.scoreCircle}>
-              <Text style={styles.scoreNumber}>{ai?.overallScore || 85}</Text>
+              <Text style={styles.scoreNumber}>{ai?.overallScore ?? '—'}</Text>
               <Text style={styles.scoreTotal}>/ 100</Text>
             </View>
           </View>

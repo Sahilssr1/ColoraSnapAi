@@ -10,12 +10,17 @@ interface MiniSparklineProps {
 }
 
 export const MiniSparkline: React.FC<MiniSparklineProps> = ({
-  data = [35, 60, 45, 80, 50, 95, 70, 85, 65, 90, 100, 40],
+  data = [],
   barColor,
   height = 36,
   width = 64,
 }) => {
   const { theme } = useTheme();
+  // No default data: previously this rendered a fixed fake trend
+  // whenever a caller passed nothing. Empty data now renders nothing.
+  if (!data || data.length === 0) {
+    return null;
+  }
   const maxVal = Math.max(...data, 1);
   const color = barColor || theme.tabBarActive;
 

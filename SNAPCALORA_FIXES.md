@@ -186,3 +186,71 @@ reopen, and confirm it comes back Paused, not as if it kept counting.
 - Old patterns confirmed gone: no `googleId` post from the app, no
   `gemini-1.5-flash` call, no hardcoded keystore password in
   `build.gradle`.
+<<<<<<< HEAD
+=======
+
+## 7. General bug + UI audit — 2026-10-29, PUSHED 2026-10-29 (commit 22b6588)
+
+Found and fixed, all in the mobile app:
+
+1. **Dead "View Trends & Activity" button (Search tab):** it called
+   `navigation.navigate('Analytics')`, which is not a route in either
+   navigator, so tapping it did nothing. It now goes to
+   `MainTabs > AnalyticsTab`. The neighbouring "Search & Log Meal"
+   button was also pushing a duplicate Search screen on top of itself;
+   it now just closes the modal (you are already on the search tab).
+2. **Session expiry left the user stuck:** when a refresh token failed,
+   the API client logged the user out of Redux but left MainTabs on
+   screen, so every query kept failing with 401. A new global
+   navigation ref (`mobile/src/navigation/navigationRef.ts`, wired in
+   `App.tsx`) now resets the stack to Login on refresh failure — the
+   same reset the Profile logout button already used.
+3. **Profile edit could overwrite real data with defaults:** the Edit
+   form's weight/height/age/goal state was initialised once from a
+   profile that had not loaded yet (70 kg / 175 cm / 25 yrs). Saving
+   before the query returned would have written those defaults.
+   The form now syncs from the loaded profile whenever it is not
+   being edited.
+4. **Fake health data removed (Search tab + Home):**
+   - Home "Stand" hours were `current hour - 6`, i.e. derived from
+     the clock, not a sensor. The Activity card now shows Move,
+     Exercise (labelled est.) and real step-goal %, and its third ring
+     is step-goal progress.
+   - Home "Walking Steadiness" claimed "Verified / Normal stride".
+     Nothing measures stride, so it now says "Not measured".
+   - Search health categories showed invented values for Cycle
+     (Day 14), Hearing (62 dB), Heart (68 BPM), Medications (3 of 3),
+     Mental wellbeing, Mobility (4.8 km/h, 1.2% asymmetry) and
+     Respiratory (98% SpO2), plus invented trend sparklines for
+     Activity, Body (a fake 72→70 kg weight loss), Steps, Nutrition
+     and Sleep. Unmeasured categories now show "— / Not connected";
+     sparklines with no history data now render nothing instead of
+     a made-up trend (the sparkline component's own fake default
+     data was also removed). Activity calories falling back to 450
+     when nothing was eaten is also gone — 0 now shows as 0.
+5. **Fake nutrition scores removed:** Trends showed 85 with no meals
+   logged and forced calorie-based scores into 70–99; AI Insights
+   showed 85 when no analysis existed. Both now show no score
+   ("No score yet" / "—") until the backend returns a real one.
+6. **Unverified marketing claims removed (Onboarding):** "99.4%
+   Accuracy", "99.4% Macro Accuracy", "in 1.2s", "Clinical" and
+   "Circadian Timers" are gone — no measurement supports them.
+7. **UI:** the stack navigator's hardcoded dark `#090A0F` background,
+   which flashed behind light-theme screens, was removed.
+
+Checked and left alone: camera/barcode scan flow and meal logging
+(quantity multiplier is applied consistently), water/weight/sleep
+endpoints, the 7-day step history (the backend already fills missing
+days, so the modal's "Today" row is correct), and the walk/run
+session tracker from §6.
+
+Not fixed here (needs a product decision, not a code patch): sleep
+score still uses a fixed 20-point consistency component and estimates
+deep sleep at 22% of hours when only hours are entered; step dates
+are server-time based, so "today" can shift near midnight in IST.
+Both are now documented limitations, not silent fake readings.
+
+Verification: all 11 changed/new mobile files pass a TypeScript
+transpile check. Not tested on a real device. Pushed 2026-10-29 on
+his yes (commit 22b6588, verified as remote HEAD).
+>>>>>>> 6f46457ec8357220c0c8a6ff9d34887f990f5934

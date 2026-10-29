@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants/config';
 import { store } from '../redux/store';
 import { logout, setCredentials } from '../redux/slices/authSlice';
+import { resetToLogin } from '../navigation/navigationRef';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -67,6 +68,9 @@ apiClient.interceptors.response.use(
         await AsyncStorage.removeItem('calora_access_token');
         await AsyncStorage.removeItem('calora_refresh_token');
         store.dispatch(logout());
+        // Previously the user stayed inside MainTabs with a dead session
+        // and every query kept failing with 401. Send them to Login.
+        resetToLogin();
         return Promise.reject(refreshErr);
       }
     }

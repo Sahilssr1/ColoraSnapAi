@@ -23,7 +23,8 @@ export const RootNavigator: React.FC = () => {
       initialRouteName="Splash"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#090A0F' },
+        // No hardcoded background: the old '#090A0F' flashed dark
+        // behind light-theme screens during navigation.
         animation: 'slide_from_right',
       }}
     >

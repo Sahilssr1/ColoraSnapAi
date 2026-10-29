@@ -21,7 +21,6 @@ import {
   Droplets,
   Moon,
   Zap,
-  CheckCircle2,
   Plus,
   Trash2,
   X,
@@ -109,12 +108,12 @@ export const HomeScreen = ({ navigation }: any) => {
   // Real activity calculations
   const activeBurnedCalories = stepsBurnedCalories || (dashboard?.steps?.burnedCalories ?? 0);
   const moveGoal = 400; // 400 active kcal move goal
-  const exerciseMinutes = Math.max(0, Math.round(totalSteps / 100)); // ~100 steps per min active movement
+  const exerciseMinutes = Math.max(0, Math.round(totalSteps / 100)); // ~100 steps per min active movement — an estimate, not a sensor reading
   const exerciseGoal = 30; // 30 min daily exercise goal
-  const currentHour = new Date().getHours();
-  const standHours = Math.min(12, Math.max(1, currentHour >= 7 ? currentHour - 6 : 1));
-  const standGoal = 12; // 12 hours stand goal
   const stepsGoal = 10000;
+  // NOTE: stand hours were previously derived from the clock
+  // (current hour - 6), not from any sensor, so they were fake.
+  // The third ring now shows real step-goal progress instead.
 
   // Sleep Data from DB
   const sleepData = dashboard?.sleep;
@@ -160,7 +159,7 @@ export const HomeScreen = ({ navigation }: any) => {
           onProfilePress={() => navigation.navigate('ProfileTab')}
         />
 
-        {/* 1. Activity Metric Card (Move / Exercise / Stand) - Live Motion & DB */}
+        {/* 1. Activity Metric Card (Move / Exercise / Steps goal) - Live Motion & DB */}
         <AppleHealthMetricCard
           icon={<Flame color="#FF3B30" size={18} strokeWidth={2.5} />}
           categoryTitle="Activity"
@@ -170,8 +169,8 @@ export const HomeScreen = ({ navigation }: any) => {
           mainUnit="cal"
           subMetrics={[
             { label: 'Move', value: `${Math.round(activeBurnedCalories)} cal`, color: '#FF3B30' },
-            { label: 'Exercise', value: `${exerciseMinutes} min`, color: '#34C759' },
-            { label: 'Stand', value: `${standHours} hr`, color: '#007AFF' },
+            { label: 'Exercise', value: `${exerciseMinutes} min (est.)`, color: '#34C759' },
+            { label: 'Steps goal', value: `${Math.min(100, Math.round((totalSteps / stepsGoal) * 100))}%`, color: '#007AFF' },
           ]}
           rightElement={
             <ProgressRing
@@ -179,7 +178,7 @@ export const HomeScreen = ({ navigation }: any) => {
               strokeWidth={5}
               calorieProgress={moveGoal > 0 ? activeBurnedCalories / moveGoal : 0}
               proteinProgress={exerciseGoal > 0 ? exerciseMinutes / exerciseGoal : 0}
-              carbsProgress={standGoal > 0 ? standHours / standGoal : 0}
+              carbsProgress={stepsGoal > 0 ? totalSteps / stepsGoal : 0}
               showCenterText={false}
               isActivityRing={true}
             />
@@ -387,14 +386,13 @@ export const HomeScreen = ({ navigation }: any) => {
           icon={<Zap color="#FF9500" size={18} strokeWidth={2.5} />}
           categoryTitle="Walking Steadiness"
           categoryColor="#FF9500"
-          timestamp="Verified"
-          mainValue="OK"
-          statusLabel="Normal stride & cadence"
-          statusColor="#34C759"
+          timestamp="Not measured"
+          mainValue="—"
+          statusLabel="Not measured yet — no stride sensor data is collected"
+          statusColor={theme.textMuted}
           rightElement={
             <View style={[styles.okBadge, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
-              <CheckCircle2 color="#34C759" size={14} strokeWidth={2.5} style={{ marginRight: 4 }} />
-              <Text style={[styles.okBadgeText, { color: '#34C759' }]}>Verified</Text>
+              <Text style={[styles.okBadgeText, { color: theme.textMuted }]}>Not measured</Text>
             </View>
           }
           onPress={() => navigation.navigate('AnalyticsTab')}

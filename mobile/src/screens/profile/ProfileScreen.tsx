@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,19 @@ export const ProfileScreen: React.FC = () => {
   const [height, setHeight] = useState(profile?.height?.toString() || '175');
   const [age, setAge] = useState(profile?.age?.toString() || '25');
   const [goal, setGoal] = useState<GoalType>(profile?.goal || 'MAINTAIN');
+
+  // The profile query loads after mount, so the initial 70/175/25
+  // defaults above are stale until this sync runs. Without it, opening
+  // Edit and tapping Save could overwrite a real profile with defaults.
+  // Never sync while the user is mid-edit.
+  useEffect(() => {
+    if (profile && !isEditing) {
+      if (profile.weight != null) setWeight(profile.weight.toString());
+      if (profile.height != null) setHeight(profile.height.toString());
+      if (profile.age != null) setAge(profile.age.toString());
+      if (profile.goal) setGoal(profile.goal);
+    }
+  }, [profile, isEditing]);
   const [saving, setSaving] = useState(false);
 
   const handleSaveProfile = async () => {
