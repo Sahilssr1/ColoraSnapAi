@@ -53,15 +53,15 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
     {
       id: 'scanner',
       title: 'Visual AI Food Recognition',
-      subtitle: 'Snap your meal to instantly detect calories, protein, carbs, and micronutrients in 1.2s.',
+      subtitle: 'Snap your meal to detect calories, protein, carbs, and micronutrients.',
       icon: <Camera color="#22C55E" size={22} strokeWidth={2.2} />,
-      badge: '99.4% Accuracy',
+      badge: 'AI Vision',
       color: '#22C55E',
       bgColor: 'rgba(34, 197, 94, 0.10)',
     },
     {
       id: 'metabolic',
-      title: 'Clinical Metabolic Insights',
+      title: 'Metabolic Insights',
       subtitle: 'Real-time motion tracking calculating active burn, steps, and caloric deficit curves.',
       icon: <TrendingUp color="#F97316" size={22} strokeWidth={2.2} />,
       badge: 'Motion Sensor Sync',
@@ -73,7 +73,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       title: 'Smart Hydration & Fasting',
       subtitle: 'Adaptive water logging milestones and circadian fasting window countdowns.',
       icon: <Droplets color="#06B6D4" size={22} strokeWidth={2.2} />,
-      badge: 'Circadian Timers',
+      badge: 'Water Logging',
       color: '#06B6D4',
       bgColor: 'rgba(6, 182, 212, 0.10)',
     },
@@ -165,7 +165,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
             <View style={[styles.trustBadge, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
               <ShieldCheck color="#22C55E" size={16} strokeWidth={2.2} />
               <Text style={[styles.trustBadgeText, { color: theme.textSecondary }]}>
-                99.4% Macro Accuracy
+                AI Food Recognition
               </Text>
             </View>
 

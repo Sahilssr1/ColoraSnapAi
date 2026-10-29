@@ -44,9 +44,10 @@ export const AnalyticsScreen = ({ navigation }: any) => {
   const carbsConsumed = dashboard?.summary?.carbsConsumed ?? 0;
   const fatConsumed = dashboard?.summary?.fatConsumed ?? 0;
 
-  // Dynamic recovery score based on goals achievement
-  const calorieScore = targetCalories > 0 ? Math.min(100, Math.round((consumedCalories / targetCalories) * 100)) : 0;
-  const overallScore = dashboard?.aiAnalysis?.overallScore ?? (calorieScore > 0 ? Math.min(99, Math.max(70, calorieScore)) : 85);
+  // No invented fallback: the backend score is used, or none is shown.
+  // Previously this showed 85 with no meals logged, and forced any
+  // calorie-based score into 70–99, which hid a genuinely low score.
+  const overallScore = dashboard?.aiAnalysis?.overallScore ?? null;
 
   const stepHistory = trendsData?.stepHistory || [];
   const dailyTrends = trendsData?.dailyTrends || [];
@@ -409,13 +410,13 @@ export const AnalyticsScreen = ({ navigation }: any) => {
         {/* 4. Nutrition & Biomarkers Score Breakdown */}
         <GlassCard style={styles.scoreBreakdownCard}>
           <View style={styles.scoreHeaderRow}>
-            <MiniScoreGauge score={overallScore} size={64} strokeWidth={7} />
+            <MiniScoreGauge score={overallScore ?? 0} size={64} strokeWidth={7} />
             <View style={styles.scoreHeaderContent}>
               <Text style={[styles.scoreTitle, { color: theme.textPrimary }]}>
-                {overallScore >= 80 ? 'Optimal Status' : 'Moderate Balance'}
+                {overallScore === null ? 'No score yet' : overallScore >= 80 ? 'Optimal Status' : 'Moderate Balance'}
               </Text>
               <Text style={[styles.scoreSubtitle, { color: theme.textSecondary }]}>
-                {dashboard?.aiAnalysis?.summary || 'Metabolic rate and daily nutrition alignment from your personal biometrics.'}
+                {dashboard?.aiAnalysis?.summary || 'Log a meal to get a nutrition score.'}
               </Text>
             </View>
           </View>
