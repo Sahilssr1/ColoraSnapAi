@@ -175,13 +175,61 @@ export class AuthService {
     return this.generateAuthTokens(storedToken.user);
   }
 
-  async googleAuth(payload: { email: string; name: string; googleId: string; avatar?: string }): Promise<AuthResponse> {
-    let user = await userRepository.findByGoogleId(payload.googleId);
+  /**
+   * Verify a Google ID token with Google before trusting it. The old code
+   * accepted any client-supplied googleId/email with no check at all, so
+   * anyone could sign in as any user. The token's `sub` becomes googleId
+   * and the token's email/name win over client-supplied values.
+   */
+  private async verifyGoogleIdToken(idToken: string): Promise<{ googleId: string; email: string; name: string; avatar?: string }> {
+    if (!env.GOOGLE_WEB_CLIENT_ID) {
+      throw new AppError('Google sign-in is not configured on the server: set GOOGLE_WEB_CLIENT_ID (the WEB OAuth client ID) in Render env vars.', 500);
+    }
+    let tokenInfo: any;
+    try {
+      const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+      tokenInfo = await res.json();
+      if (!res.ok) {
+        throw new AppError(`Google ID token rejected: ${tokenInfo?.error_description || tokenInfo?.error || res.statusText}`, 401);
+      }
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      throw new AppError('Could not verify the Google ID token. Check the server network and try again.', 502);
+    }
+    if (tokenInfo.aud !== env.GOOGLE_WEB_CLIENT_ID) {
+      throw new AppError('Google ID token was issued for a different app (aud mismatch).', 401);
+    }
+    if (tokenInfo.iss !== 'accounts.google.com' && tokenInfo.iss !== 'https://accounts.google.com') {
+      throw new AppError('Google ID token issuer is not Google.', 401);
+    }
+    if (tokenInfo.exp && Number(tokenInfo.exp) * 1000 < Date.now()) {
+      throw new AppError('Google ID token has expired. Sign in again.', 401);
+    }
+    if (!tokenInfo.sub || !tokenInfo.email) {
+      throw new AppError('Google ID token is missing the user id or email.', 401);
+    }
+    return {
+      googleId: tokenInfo.sub,
+      email: tokenInfo.email,
+      name: tokenInfo.name || 'Calora User',
+      avatar: tokenInfo.picture || undefined,
+    };
+  }
+
+  async googleAuth(payload: { idToken: string; email?: string; name?: string; avatar?: string }): Promise<AuthResponse> {
+    const verified = await this.verifyGoogleIdToken(payload.idToken);
+    // Prefer the verified token values; fall back to client values only for display.
+    const email = verified.email;
+    const name = verified.name || payload.name || 'Calora User';
+    const avatar = verified.avatar || payload.avatar;
+    const googleId = verified.googleId;
+
+    let user = await userRepository.findByGoogleId(googleId);
 
     if (!user) {
-      user = await userRepository.findByEmail(payload.email);
+      user = await userRepository.findByEmail(email);
       if (user) {
-        user = await userRepository.update(user.id, { googleId: payload.googleId, avatar: user.avatar || payload.avatar });
+        user = await userRepository.update(user.id, { googleId, avatar: user.avatar || avatar });
       } else {
         const recommendedMacros = nutritionService.calculateRecommendedMacros({
           weightKg: 70,
@@ -193,10 +241,10 @@ export class AuthService {
         });
 
         user = await userRepository.create({
-          email: payload.email,
-          name: payload.name,
-          googleId: payload.googleId,
-          avatar: payload.avatar,
+          email,
+          name,
+          googleId,
+          avatar,
           isEmailVerified: true,
           goals: {
             create: recommendedMacros,

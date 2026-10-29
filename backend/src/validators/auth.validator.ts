@@ -29,9 +29,11 @@ export const refreshTokenSchema = z.object({
 
 export const googleAuthSchema = z.object({
   body: z.object({
-    googleId: z.string().min(1, 'Google ID is required'),
-    email: z.string().email('Invalid email address'),
-    name: z.string().min(1, 'Name is required'),
+    // The ID token from Google Sign-In. The backend verifies it with Google;
+    // a bare googleId/email pair is no longer accepted (it was unverified).
+    idToken: z.string().min(1, 'Google ID token is required'),
+    email: z.string().email('Invalid email address').optional(),
+    name: z.string().min(1, 'Name is required').optional(),
     avatar: z.string().url().optional(),
   }),
 });

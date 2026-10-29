@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
+import { AppError } from '../middlewares/error.middleware.js';
 import { foodRepository } from '../repositories/food.repository.js';
 import { FoodSource } from '@prisma/client';
 
@@ -50,40 +51,185 @@ export interface ScanImageResult {
 export class AiVisionService {
   /**
    * Main entrypoint for scanning food photos.
-   * Leverages Gemini Vision API or fallback OpenAI Vision / Smart Heuristics.
+   * Supports Groq (openai/gpt-oss-120b / vision), xAI Grok (grok-2-vision), Gemini Vision, or OpenAI Vision.
    */
   async scanFoodImage(base64Image: string, mimeType = 'image/webp'): Promise<ScanImageResult> {
     logger.info('📸 Starting AI Food Vision Analysis...');
 
-    // Attempt Gemini Vision first if API key is provided
+    let lastError: unknown = null;
+
+    // Resolve keys, intelligently detecting key prefixes (gsk_ = Groq Cloud, xai- = xAI Grok)
+    const groqKey = env.GROQ_API_KEY || (env.GROK_API_KEY?.startsWith('gsk_') ? env.GROK_API_KEY : undefined);
+    const grokKey = (env.GROK_API_KEY && !env.GROK_API_KEY.startsWith('gsk_')) 
+      ? env.GROK_API_KEY 
+      : (env.XAI_API_KEY || (env.OPENAI_API_KEY?.startsWith('xai-') ? env.OPENAI_API_KEY : undefined));
+
+    // 1. Try Groq Cloud if key is present
+    if (groqKey) {
+      try {
+        const groqResult = await this.callGroqVision(base64Image, groqKey);
+        if (groqResult) return groqResult;
+      } catch (err) {
+        lastError = err;
+        logger.warn('Groq Vision API error:', (err as any)?.response?.data || (err as Error).message);
+      }
+    }
+
+    // 2. Try xAI Grok Vision if key is present
+    if (grokKey) {
+      try {
+        const grokResult = await this.callGrokVision(base64Image, grokKey);
+        if (grokResult) return grokResult;
+      } catch (err) {
+        lastError = err;
+        logger.warn('xAI Grok Vision API error:', (err as any)?.response?.data || (err as Error).message);
+      }
+    }
+
+    // 3. Try Google Gemini Vision if key is present
     if (env.GEMINI_API_KEY && env.GEMINI_API_KEY !== 'AIzaSyDemoKeyForCaloraFoodVision') {
       try {
         const geminiResult = await this.callGeminiVision(base64Image, mimeType);
         if (geminiResult) return geminiResult;
       } catch (err) {
-        logger.warn('Gemini Vision API error, falling back to USDA knowledge base:', err);
+        lastError = err;
+        logger.warn('Gemini Vision API error:', (err as any)?.response?.data || (err as Error).message);
       }
     }
 
-    // Attempt OpenAI Vision if key provided
-    if (env.OPENAI_API_KEY) {
+    // 4. Try OpenAI Vision if key is present
+    if (env.OPENAI_API_KEY && !env.OPENAI_API_KEY.startsWith('xai-') && !env.OPENAI_API_KEY.startsWith('gsk_')) {
       try {
         const openAiResult = await this.callOpenAiVision(base64Image);
         if (openAiResult) return openAiResult;
       } catch (err) {
-        logger.warn('OpenAI Vision API error, falling back to USDA knowledge base:', err);
+        lastError = err;
+        logger.warn('OpenAI Vision API error:', (err as any)?.response?.data || (err as Error).message);
       }
     }
 
-    // High-accuracy fallback food recognition engine synthesizing USDA database
-    return this.generateSimulatedVisionResult();
+    if (!groqKey && !grokKey && !env.GEMINI_API_KEY && !env.OPENAI_API_KEY) {
+      throw new AppError('No food-scan AI is configured on the server. Set GROQ_API_KEY (or GROK_API_KEY) in Render env vars.', 503);
+    }
+    const upstream = (lastError as any)?.response?.data?.error?.message || (lastError as Error)?.message || 'unknown error';
+    throw new AppError(`Food-scan AI failed: ${upstream}. Check the API key and model in Render env vars, then retry.`, 502);
+  }
+
+  private parseVisionJson(text: string): any {
+    // Model may wrap JSON in ```json fences even with json_object mode.
+    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    return JSON.parse(cleaned);
+  }
+
+  private async callGroqVision(base64Image: string, apiKey: string): Promise<ScanImageResult | null> {
+    const prompt = this.getVisionPrompt();
+    const model = env.GROQ_MODEL || 'openai/gpt-oss-120b';
+
+    const imageUrl = base64Image.startsWith('data:') 
+      ? base64Image 
+      : `data:image/jpeg;base64,${base64Image}`;
+
+    try {
+      return await this.executeGroqRequest(model, prompt, imageUrl, apiKey);
+    } catch (err: any) {
+      // If the selected model (e.g. openai/gpt-oss-120b) is text-only and rejects image payloads,
+      // fallback to Groq's multimodal vision model (e.g. qwen/qwen3.8-27b)
+      const errorMsg = JSON.stringify(err?.response?.data || err?.message || '');
+      if (
+        errorMsg.toLowerCase().includes('image') ||
+        errorMsg.toLowerCase().includes('vision') ||
+        errorMsg.toLowerCase().includes('multimodal') ||
+        errorMsg.toLowerCase().includes('modality')
+      ) {
+        logger.warn(`Groq model ${model} does not accept image inputs. Retrying with Groq vision model qwen/qwen3.8-27b...`);
+        return await this.executeGroqRequest('qwen/qwen3.8-27b', prompt, imageUrl, apiKey);
+      }
+      throw err;
+    }
+  }
+
+  private async executeGroqRequest(model: string, prompt: string, imageUrl: string, apiKey: string): Promise<ScanImageResult | null> {
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: imageUrl },
+              },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        max_tokens: 1500,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const content = response.data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+    return this.formatVisionResponse(this.parseVisionJson(content));
+  }
+
+  private async callGrokVision(base64Image: string, apiKey: string): Promise<ScanImageResult | null> {
+    const prompt = this.getVisionPrompt();
+    const model = (env.GROK_MODEL && env.GROK_MODEL !== 'grok-4') ? env.GROK_MODEL : 'grok-2-vision-1212';
+
+    const imageUrl = base64Image.startsWith('data:') 
+      ? base64Image 
+      : `data:image/jpeg;base64,${base64Image}`;
+
+    const response = await axios.post(
+      'https://api.x.ai/v1/chat/completions',
+      {
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: imageUrl, detail: 'high' },
+              },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        max_tokens: 1500,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const content = response.data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+    return this.formatVisionResponse(this.parseVisionJson(content));
   }
 
   private async callGeminiVision(base64Image: string, mimeType: string): Promise<ScanImageResult | null> {
     const prompt = this.getVisionPrompt();
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         contents: [
           {
@@ -109,12 +255,15 @@ export class AiVisionService {
     const candidate = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!candidate) return null;
 
-    const parsed = JSON.parse(candidate);
-    return this.formatVisionResponse(parsed);
+    return this.formatVisionResponse(this.parseVisionJson(candidate));
   }
 
   private async callOpenAiVision(base64Image: string): Promise<ScanImageResult | null> {
     const prompt = this.getVisionPrompt();
+
+    const imageUrl = base64Image.startsWith('data:') 
+      ? base64Image 
+      : `data:image/jpeg;base64,${base64Image}`;
 
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -127,13 +276,13 @@ export class AiVisionService {
               { type: 'text', text: prompt },
               {
                 type: 'image_url',
-                image_url: { url: `data:image/jpeg;base64,${base64Image}`, detail: 'high' },
+                image_url: { url: imageUrl },
               },
             ],
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 1200,
+        max_tokens: 1500,
       },
       {
         headers: {
@@ -147,8 +296,7 @@ export class AiVisionService {
     const content = response.data?.choices?.[0]?.message?.content;
     if (!content) return null;
 
-    const parsed = JSON.parse(content);
-    return this.formatVisionResponse(parsed);
+    return this.formatVisionResponse(this.parseVisionJson(content));
   }
 
   private getVisionPrompt(): string {
@@ -248,115 +396,6 @@ export class AiVisionService {
       detectedIngredients: Array.isArray(raw.detectedIngredients) ? raw.detectedIngredients : [],
       overallConfidence: Number(raw.overallConfidence || 0.94),
       aiExplanation: raw.aiExplanation || 'Balanced meal rich in lean protein, healthy fats, and essential micronutrients.',
-    };
-  }
-
-  private generateSimulatedVisionResult(): ScanImageResult {
-    return {
-      identifiedPlateName: 'Grilled Mediterranean Salmon & Avocado Bowl',
-      primaryFood: {
-        name: 'Grilled Mediterranean Salmon & Avocado Bowl',
-        servingSize: 320,
-        servingUnit: 'g',
-        calories: 520,
-        protein: 42.5,
-        carbs: 26.0,
-        fat: 28.0,
-        fiber: 8.5,
-        sugar: 3.2,
-        sodium: 410,
-        cholesterol: 75,
-        potassium: 890,
-        vitaminA: 320,
-        vitaminB: 1.8,
-        vitaminC: 34.0,
-        vitaminD: 12.5,
-        vitaminE: 5.8,
-        vitaminK: 62.0,
-        calcium: 95,
-        iron: 2.9,
-        magnesium: 86,
-        zinc: 2.4,
-        copper: 0.35,
-        phosphorus: 440,
-        omega3: 2.8,
-        omega6: 2.4,
-        waterContent: 68.0,
-        glycemicLoad: 6,
-        confidenceScore: 0.96,
-        healthRating: 'Excellent',
-        dietaryTags: ['High Omega-3', 'High Protein', 'Heart Healthy', 'Keto Friendly'],
-      },
-      detectedIngredients: [
-        {
-          name: 'Wild Atlantic Salmon',
-          servingSize: 150,
-          servingUnit: 'g',
-          calories: 312,
-          protein: 33.0,
-          carbs: 0,
-          fat: 19.5,
-          fiber: 0,
-          sugar: 0,
-          sodium: 88,
-          cholesterol: 75,
-          potassium: 544,
-          vitaminA: 60,
-          vitaminB: 1.2,
-          vitaminC: 5.8,
-          vitaminD: 12.5,
-          vitaminE: 4.5,
-          vitaminK: 0.2,
-          calcium: 14,
-          iron: 0.5,
-          magnesium: 40,
-          zinc: 0.5,
-          copper: 0.08,
-          phosphorus: 360,
-          omega3: 2.7,
-          omega6: 0.9,
-          waterContent: 68,
-          glycemicLoad: 0,
-          confidenceScore: 0.97,
-          healthRating: 'Excellent',
-          dietaryTags: ['Omega-3 Rich'],
-        },
-        {
-          name: 'Organic Hass Avocado',
-          servingSize: 80,
-          servingUnit: 'g',
-          calories: 128,
-          protein: 1.6,
-          carbs: 6.8,
-          fat: 11.8,
-          fiber: 5.4,
-          sugar: 0.6,
-          sodium: 6,
-          cholesterol: 0,
-          potassium: 388,
-          vitaminA: 6,
-          vitaminB: 0.24,
-          vitaminC: 8.0,
-          vitaminD: 0,
-          vitaminE: 1.65,
-          vitaminK: 16.8,
-          calcium: 10,
-          iron: 0.44,
-          magnesium: 23,
-          zinc: 0.51,
-          copper: 0.15,
-          phosphorus: 42,
-          omega3: 0.09,
-          omega6: 1.35,
-          waterContent: 73,
-          glycemicLoad: 1,
-          confidenceScore: 0.98,
-          healthRating: 'Excellent',
-          dietaryTags: ['Healthy Fats', 'High Fiber'],
-        },
-      ],
-      overallConfidence: 0.96,
-      aiExplanation: 'Outstanding source of heart-healthy Omega-3 fats, bioavailable lean protein, and key electrolytes like potassium and magnesium.',
     };
   }
 

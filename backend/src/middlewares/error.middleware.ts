@@ -66,6 +66,26 @@ export const errorHandler = (
       });
       return;
     }
+    if (err.code === 'P2021' || err.code === 'P2022') {
+      // Table or column does not exist: the database was never migrated.
+      // This is the most common cause of a 500 on a fresh Render deploy.
+      res.status(503).json({
+        success: false,
+        message: 'Database tables are missing. Run the Prisma migration/deploy on the server, then retry.',
+        code: err.code,
+      });
+      return;
+    }
+  }
+
+  // 3b. Prisma cannot reach / initialise the database at all.
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    res.status(503).json({
+      success: false,
+      message: 'Database unavailable. Check DATABASE_URL and that the Postgres service is running.',
+      code: (err as { errorCode?: string }).errorCode,
+    });
+    return;
   }
 
   // 4. Fallback Internal Server Error

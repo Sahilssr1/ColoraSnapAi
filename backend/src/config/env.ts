@@ -20,8 +20,23 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
+  // Groq Cloud (gsk_...)
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
+
+  // xAI Grok Vision (xai-...)
+  GROK_API_KEY: z.string().optional(),
+  XAI_API_KEY: z.string().optional(),
+  GROK_MODEL: z.string().default('grok-2-vision-1212'),
+
   GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   OPENAI_API_KEY: z.string().optional(),
+
+  // Web OAuth client ID (type WEB) from Google Cloud Console. The backend
+  // checks every Google ID token against this value; without it /auth/google
+  // cannot verify a sign-in and will return a clear configuration error.
+  GOOGLE_WEB_CLIENT_ID: z.string().optional(),
 
   USDA_API_KEY: z.string().default('DEMO_KEY'),
   OPENFOODFACTS_BASE_URL: z.string().default('https://world.openfoodfacts.org/api/v2'),

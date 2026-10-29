@@ -52,6 +52,7 @@ import { MiniSparkline } from '../../components/MiniSparkline';
 import { MiniScoreGauge } from '../../components/MiniScoreGauge';
 import { GlassCard } from '../../components/GlassCard';
 import { usePedometer } from '../../hooks/usePedometer';
+import { WalkRunTracker } from '../../components/WalkRunTracker';
 
 export const HomeScreen = ({ navigation }: any) => {
   const { theme, isDark } = useTheme();
@@ -205,6 +206,12 @@ export const HomeScreen = ({ navigation }: any) => {
           }
           onPress={() => setStepsModalVisible(true)}
         />
+
+        {/* 2b. Walk / Run session tracker — explicit Start Walk / Start Run.
+            Daily steps above are foreground-only on Android (Expo pedometer
+            does not deliver updates in the background); this card makes
+            that limit visible and gives the user a session to track. */}
+        <WalkRunTracker />
 
         {/* 3. Nutrition & Macro Target Card - Live from DB */}
         <AppleHealthMetricCard

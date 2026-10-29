@@ -31,6 +31,7 @@ export const signInWithGoogle = async (): Promise<{
   email: string;
   name: string;
   picture?: string;
+  idToken: string;
 } | null> => {
   if (!isGoogleAuthAvailable()) {
     Alert.alert(
@@ -43,13 +44,27 @@ export const signInWithGoogle = async (): Promise<{
   try {
     await GoogleSigninModule.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const userInfo = await GoogleSigninModule.signIn();
-    if (userInfo?.user) {
+    // v12 returns { user, idToken, ... } at the top level; newer versions
+    // nest them under .data. Handle both so a library upgrade can't silently
+    // drop the token (the backend now requires idToken, not just googleId).
+    const payload = userInfo?.data ?? userInfo;
+    const user = payload?.user;
+    const idToken = payload?.idToken;
+    if (user && idToken) {
       return {
-        id: userInfo.user.id,
-        email: userInfo.user.email,
-        name: userInfo.user.name || 'Calora User',
-        picture: userInfo.user.photo || undefined,
+        id: user.id,
+        email: user.email,
+        name: user.name || 'Calora User',
+        picture: user.photo || undefined,
+        idToken,
       };
+    }
+    if (user && !idToken) {
+      // webClientId missing or wrong in Google Cloud Console: Google returns
+      // a profile but no token. Surface that instead of failing at the backend.
+      throw new Error(
+        'Google returned no ID token. Check webClientId in Google Cloud Console (it must be the WEB client, not Android).'
+      );
     }
     return null;
   } catch (err: any) {

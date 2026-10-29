@@ -23,6 +23,12 @@ export const usePedometer = (initialSteps: number = 0) => {
   const [dailyHistory, setDailyHistory] = useState<StepRecord[]>([]);
 
   const lastSyncCountRef = useRef<number>(initialSteps);
+  // Keep the latest pastStepCount in a ref so the live subscription does
+  // not have to restart (and lose its session count) every time the
+  // past total changes — e.g. on a foreground refetch. Previously the
+  // watch effect depended on pastStepCount, so a refetch tore the
+  // subscription down and the new watch's steps overwrote the old
+  // session count, dropping steps on Android.
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const simIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<Pedometer.Subscription | null>(null);
@@ -136,17 +142,25 @@ export const usePedometer = (initialSteps: number = 0) => {
     };
   }, [fetchTodayStepsFromOS]);
 
-  // Live step tracking while app is open
+  const pastStepCountRef = useRef<number>(initialSteps);
+  useEffect(() => {
+    pastStepCountRef.current = pastStepCount;
+  }, [pastStepCount]);
+
+  // Live step tracking while app is open. NOTE: this is foreground-only
+  // by Expo's design — Pedometer updates are not delivered while the app
+  // is in the background, and getStepCountAsync (the iOS catch-up path
+  // above) is not supported on Android.
   useEffect(() => {
     const startLiveTracking = async () => {
       try {
         if (!isPedometerAvailable) return;
-        
+
         setIsSensorTracking(true);
         subscriptionRef.current = Pedometer.watchStepCount(result => {
           setCurrentStepCount(result.steps);
-          
-          const nextTotal = pastStepCount + result.steps;
+
+          const nextTotal = pastStepCountRef.current + result.steps;
           if (nextTotal - lastSyncCountRef.current >= 5) {
              scheduleDbSync(nextTotal);
           }
@@ -167,7 +181,7 @@ export const usePedometer = (initialSteps: number = 0) => {
         clearTimeout(syncTimeoutRef.current);
       }
     };
-  }, [isPedometerAvailable, pastStepCount, scheduleDbSync]);
+  }, [isPedometerAvailable, scheduleDbSync]);
 
   // Toggle Live Walk Simulation (for testing walking live on simulator/desk)
   const toggleWalkSimulation = useCallback(() => {

@@ -141,12 +141,15 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     email: string;
     name: string;
     picture?: string;
+    idToken: string;
   }) => {
     try {
       setGoogleLoading(true);
 
+      // Send the verified ID token; the backend checks it with Google and
+      // derives the user id/email from the token itself.
       const res = await apiClient.post('/auth/google', {
-        googleId: googleProfile.id,
+        idToken: googleProfile.idToken,
         email: googleProfile.email,
         name: googleProfile.name || name || 'Calora User',
         avatar: googleProfile.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
