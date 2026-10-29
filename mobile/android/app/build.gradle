@@ -125,21 +125,31 @@ android {
             keyPassword 'android'
         }
         release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            } else if (file('release.keystore').exists()) {
-                storeFile file('release.keystore')
-                storePassword 'snapcalora123'
-                keyAlias 'snapcalora-key-alias'
-                keyPassword 'snapcalora123'
+            // Signing secrets are NEVER hardcoded here any more (the old
+            // block contained the real upload-key password in a public repo).
+            // Put them in mobile/android/keystore.properties (gitignored,
+            // template in keystore.properties.example) or in
+            // ~/.gradle/gradle.properties as MYAPP_UPLOAD_* properties.
+            def keystoreProps = new Properties()
+            def keystorePropsFile = file('keystore.properties')
+            if (keystorePropsFile.exists()) {
+                keystoreProps.load(new FileInputStream(keystorePropsFile))
+            }
+            def storeFileProp = keystoreProps['storeFile'] ?: project.findProperty('MYAPP_UPLOAD_STORE_FILE')
+            def storePasswordProp = keystoreProps['storePassword'] ?: project.findProperty('MYAPP_UPLOAD_STORE_PASSWORD')
+            def keyAliasProp = keystoreProps['keyAlias'] ?: project.findProperty('MYAPP_UPLOAD_KEY_ALIAS')
+            def keyPasswordProp = keystoreProps['keyPassword'] ?: project.findProperty('MYAPP_UPLOAD_KEY_PASSWORD')
+            if (storeFileProp) {
+                storeFile file(storeFileProp)
+                storePassword storePasswordProp
+                keyAlias keyAliasProp
+                keyPassword keyPasswordProp
             } else {
-                storeFile file('debug.keystore')
-                storePassword 'android'
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
+                throw new GradleException(
+                    'Release signing is not configured. Create mobile/android/keystore.properties ' +
+                    'from keystore.properties.example (it is gitignored) or set MYAPP_UPLOAD_* in ' +
+                    '~/.gradle/gradle.properties. See SNAPCALORA_FIXES.md.'
+                )
             }
         }
     }
