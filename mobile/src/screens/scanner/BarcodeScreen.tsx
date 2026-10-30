@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,8 +26,22 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
 
+  // Auto-request permission on mount
+  useEffect(() => {
+    if (!permission) {
+      requestPermission();
+    } else if (!permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission]);
+
   if (!permission) {
-    return <View style={styles.container} />;
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#22C55E" />
+        <Text style={styles.loadingText}>Opening Barcode Scanner...</Text>
+      </View>
+    );
   }
 
   if (!permission.granted) {
@@ -39,6 +53,9 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
         </Text>
         <TouchableOpacity style={styles.grantButton} onPress={requestPermission}>
           <Text style={styles.grantButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.cancelButtonText}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -63,26 +80,38 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
       } else {
         Alert.alert(
           'Product Not Found',
-          'This barcode was not found in our global food database. Would you like to snap a picture with the AI scanner instead?',
+          `No food data found for barcode: ${barcode}. Try searching by name or scanning with AI photo.`,
           [
+            {
+              text: 'Try Photo Scan',
+              onPress: () => navigation.replace('Camera', { mealType }),
+            },
             {
               text: 'Scan Again',
               onPress: () => {
-                setIsScanning(false);
                 setLastScannedBarcode(null);
+                setIsScanning(false);
               },
-            },
-            {
-              text: 'Take Photo Scan',
-              onPress: () => navigation.replace('Camera', { mealType }),
             },
           ]
         );
       }
     } catch (err: any) {
-      Alert.alert('Scan Error', 'Could not query barcode.');
+      Alert.alert(
+        'Scan Error',
+        err.response?.data?.message || 'Could not look up barcode.',
+        [
+          {
+            text: 'Retry',
+            onPress: () => {
+              setLastScannedBarcode(null);
+              setIsScanning(false);
+            },
+          },
+        ]
+      );
+    } finally {
       setIsScanning(false);
-      setLastScannedBarcode(null);
     }
   };
 
@@ -90,57 +119,69 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       <CameraView
         style={StyleSheet.absoluteFillObject}
+        facing="back"
         barcodeScannerSettings={{
-          barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'qr', 'code128'],
+          barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'qr', 'code128', 'code39'],
         }}
         onBarcodeScanned={isScanning ? undefined : handleBarcodeScanned}
-      >
-        <SafeAreaView style={styles.overlay}>
-          {/* Top Bar with Safe Insets */}
-          <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 14 : 8) }]}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.closeText}>✕</Text>
-            </TouchableOpacity>
+      />
 
-            <View style={styles.titleBadge}>
-              <Text style={styles.titleText}>Barcode Scanner</Text>
-            </View>
+      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+        {/* Top Bar with Safe Insets */}
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 14 : 8) }]}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.closeText}>✕</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.aiPhotoSwitch}
-              onPress={() => navigation.replace('Camera', { mealType })}
-            >
-              <Text style={styles.aiPhotoSwitchText}>AI Photo</Text>
-            </TouchableOpacity>
+          <View style={styles.titleBadge}>
+            <Text style={styles.titleText}>Barcode Scanner</Text>
           </View>
 
-          {/* Viewfinder Target */}
-          <View style={styles.viewfinderContainer}>
-            <View style={styles.targetFrame}>
-              <View style={[styles.corner, styles.topLeft]} />
-              <View style={[styles.corner, styles.topRight]} />
-              <View style={[styles.corner, styles.bottomLeft]} />
-              <View style={[styles.corner, styles.bottomRight]} />
+          <TouchableOpacity
+            style={styles.aiPhotoSwitch}
+            onPress={() => navigation.replace('Camera', { mealType })}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.aiPhotoSwitchText}>AI Photo</Text>
+          </TouchableOpacity>
+        </View>
 
-              {/* Laser Line */}
-              <View style={styles.laserLine} />
+        {/* Viewfinder Target */}
+        <View style={styles.viewfinderContainer} pointerEvents="none">
+          <View style={styles.targetFrame}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
 
-              {isScanning && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="large" color="#22C55E" />
-                  <Text style={styles.loadingText}>Looking up product data...</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.hintText}>Align barcode inside the frame</Text>
+            {/* Laser Line */}
+            <View style={styles.laserLine} />
+
+            {isScanning && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#22C55E" />
+                <Text style={styles.loadingText}>Looking up product data...</Text>
+              </View>
+            )}
           </View>
+          <Text style={styles.hintText}>Align barcode inside the frame</Text>
+        </View>
 
-          <View style={styles.bottomSpace} />
-        </SafeAreaView>
-      </CameraView>
+        {/* Bottom Manual Search Shortcut */}
+        <View style={styles.bottomBar} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.manualSearchBtn}
+            onPress={() => navigation.navigate('Search', { mealType })}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.manualSearchText}>🔍 Enter Barcode or Food Manually</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </View>
   );
 };
@@ -149,6 +190,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   permissionContainer: {
     flex: 1,
@@ -175,14 +220,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 14,
+    marginBottom: 12,
   },
   grantButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  cancelButtonText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
   },
   topBar: {
@@ -234,9 +289,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   targetFrame: {
-    width: 290,
+    width: 280,
     height: 180,
-    borderRadius: 20,
+    borderRadius: 16,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -245,49 +300,50 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 28,
     height: 28,
-    borderColor: '#38EF7D',
+    borderColor: '#22C55E',
   },
   topLeft: {
     top: 0,
     left: 0,
     borderTopWidth: 4,
     borderLeftWidth: 4,
-    borderTopLeftRadius: 14,
+    borderTopLeftRadius: 12,
   },
   topRight: {
     top: 0,
     right: 0,
     borderTopWidth: 4,
     borderRightWidth: 4,
-    borderTopRightRadius: 14,
+    borderTopRightRadius: 12,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
     borderBottomWidth: 4,
     borderLeftWidth: 4,
-    borderBottomLeftRadius: 14,
+    borderBottomLeftRadius: 12,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
     borderBottomWidth: 4,
     borderRightWidth: 4,
-    borderBottomRightRadius: 14,
+    borderBottomRightRadius: 12,
   },
   laserLine: {
     width: '90%',
     height: 2,
-    backgroundColor: '#38EF7D',
-    shadowColor: '#38EF7D',
+    backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 6,
+    elevation: 4,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -303,7 +359,22 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: '500',
   },
-  bottomSpace: {
-    height: 60,
+  bottomBar: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+    alignItems: 'center',
+  },
+  manualSearchBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  manualSearchText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

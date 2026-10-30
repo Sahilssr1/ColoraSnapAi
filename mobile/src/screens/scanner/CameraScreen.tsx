@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,11 +27,26 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   const mealType = route.params?.mealType || 'LUNCH';
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef<any>(null);
   const dispatch = useAppDispatch();
 
+  // Auto-request permission on mount
+  useEffect(() => {
+    if (!permission) {
+      requestPermission();
+    } else if (!permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission]);
+
   if (!permission) {
-    return <View style={styles.container} />;
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#22C55E" />
+        <Text style={styles.loadingText}>Opening Camera...</Text>
+      </View>
+    );
   }
 
   if (!permission.granted) {
@@ -43,6 +58,9 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         </Text>
         <TouchableOpacity style={styles.grantButton} onPress={requestPermission}>
           <Text style={styles.grantButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.cancelButtonText}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -81,16 +99,26 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleCapture = async () => {
-    if (cameraRef.current && !scanning) {
+    if (!cameraRef.current || scanning) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        skipProcessing: Platform.OS === 'android',
+      });
+      if (photo?.uri) {
+        await processImageUri(photo.uri);
+      }
+    } catch (err) {
       try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        // Fallback without skipProcessing
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
         if (photo?.uri) {
           await processImageUri(photo.uri);
+          return;
         }
-      } catch (err) {
-        Alert.alert('Camera Error', 'Could not capture photo.');
-      }
+      } catch (e) {}
+      Alert.alert('Camera Error', 'Could not capture photo. Please tap the shutter again.');
     }
   };
 
@@ -112,75 +140,88 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <CameraView style={StyleSheet.absoluteFillObject} ref={cameraRef}>
-        <SafeAreaView style={styles.overlay}>
-          {/* Top Bar with Dynamic Insets */}
-          <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 14 : 8) }]}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.closeText}>✕</Text>
-            </TouchableOpacity>
+      {/* Native Camera View */}
+      <CameraView
+        style={StyleSheet.absoluteFillObject}
+        facing="back"
+        mode="picture"
+        ref={cameraRef}
+        onCameraReady={() => setCameraReady(true)}
+      />
 
-            <View style={styles.titleBadge}>
-              <Text style={styles.titleText}>AI Food Scanner</Text>
-            </View>
+      {/* Sibling Overlay: Ensures touch events reach UI and don't get swallowed */}
+      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+        {/* Top Bar with Dynamic Insets */}
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 14 : 8) }]}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.closeText}>✕</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.barcodeSwitch}
-              onPress={() => navigation.replace('Barcode', { mealType })}
-            >
-              <Text style={styles.barcodeSwitchText}>Barcode</Text>
-            </TouchableOpacity>
+          <View style={styles.titleBadge}>
+            <Text style={styles.titleText}>AI Food Scanner</Text>
           </View>
 
-          {/* Viewfinder Target Frame */}
-          <View style={styles.viewfinderContainer}>
-            <View style={styles.targetFrame}>
-              <View style={[styles.corner, styles.topLeft]} />
-              <View style={[styles.corner, styles.topRight]} />
-              <View style={[styles.corner, styles.bottomLeft]} />
-              <View style={[styles.corner, styles.bottomRight]} />
+          <TouchableOpacity
+            style={styles.barcodeSwitch}
+            onPress={() => navigation.replace('Barcode', { mealType })}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.barcodeSwitchText}>Barcode</Text>
+          </TouchableOpacity>
+        </View>
 
-              {scanning && (
-                <View style={styles.scanningOverlay}>
-                  <ActivityIndicator size="large" color="#22C55E" />
-                  <Text style={styles.scanningText}>Analyzing Nutrition with AI...</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.hintText}>Point camera at your plate or food item</Text>
+        {/* Viewfinder Target Frame */}
+        <View style={styles.viewfinderContainer} pointerEvents="none">
+          <View style={styles.targetFrame}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
+
+            {scanning && (
+              <View style={styles.scanningOverlay}>
+                <ActivityIndicator size="large" color="#22C55E" />
+                <Text style={styles.scanningText}>Analyzing Nutrition with AI...</Text>
+              </View>
+            )}
           </View>
+          <Text style={styles.hintText}>Point camera at your plate or food item</Text>
+        </View>
 
-          {/* Bottom Control Bar */}
-          <View style={styles.bottomBar}>
-            <TouchableOpacity
-              style={styles.galleryButton}
-              onPress={handlePickFromGallery}
-              disabled={scanning}
-            >
-              <Text style={styles.galleryIcon}>🖼️</Text>
-            </TouchableOpacity>
+        {/* Bottom Control Bar */}
+        <View style={styles.bottomBar} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.galleryButton}
+            onPress={handlePickFromGallery}
+            disabled={scanning}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.galleryIcon}>🖼️</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.shutterButton}
-              onPress={handleCapture}
-              disabled={scanning}
-            >
-              <View style={styles.shutterInner} />
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.shutterButton, scanning && { opacity: 0.6 }]}
+            onPress={handleCapture}
+            disabled={scanning}
+            activeOpacity={0.85}
+          >
+            <View style={styles.shutterInner} />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={() => navigation.navigate('Search', { mealType })}
-              disabled={scanning}
-            >
-              <Text style={styles.searchIcon}>🔍</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </CameraView>
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => navigation.navigate('Search', { mealType })}
+            disabled={scanning}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.searchIcon}>🔍</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </View>
   );
 };
@@ -189,6 +230,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#94A3B8',
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
   },
   permissionContainer: {
     flex: 1,
@@ -215,14 +266,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 14,
+    marginBottom: 12,
   },
   grantButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  cancelButtonText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
   },
   topBar: {

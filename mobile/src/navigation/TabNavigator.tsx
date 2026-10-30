@@ -9,6 +9,7 @@ import { SearchScreen } from '../screens/tracker/SearchScreen';
 import { AnalyticsScreen } from '../screens/analytics/AnalyticsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { useTheme } from '../theme/useTheme';
+import { navigationRef } from './navigationRef';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -27,6 +28,16 @@ export const TabNavigator: React.FC = () => {
 
   const tabBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const tabBorder = isDark ? 'rgba(255, 255, 255, 0.10)' : '#E5E5EA';
+
+  const openCamera = (navigation: any) => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Camera', { mealType: 'LUNCH' });
+    } else if (navigation?.getParent()) {
+      navigation.getParent().navigate('Camera', { mealType: 'LUNCH' });
+    } else {
+      navigation?.navigate('Camera', { mealType: 'LUNCH' });
+    }
+  };
 
   return (
     <Tab.Navigator
@@ -48,6 +59,7 @@ export const TabNavigator: React.FC = () => {
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: isDark ? 0.3 : 0.06,
           shadowRadius: 10,
+          overflow: 'visible',
         },
         tabBarActiveTintColor: '#FF3B30',
         tabBarInactiveTintColor: isDark ? '#8E8E93' : '#8E8E93',
@@ -95,10 +107,16 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen
         name="ScanTab"
         component={NullScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            openCamera(navigation);
+          },
+        })}
         options={({ navigation }) => ({
           tabBarLabel: '',
           tabBarButton: () => (
-            <View style={styles.floatingScanContainer}>
+            <View style={styles.floatingScanContainer} pointerEvents="box-none">
               <TouchableOpacity
                 style={[
                   styles.floatingScanButton,
@@ -106,8 +124,8 @@ export const TabNavigator: React.FC = () => {
                     borderColor: isDark ? '#000000' : '#F2F2F7',
                   },
                 ]}
-                activeOpacity={0.88}
-                onPress={() => navigation.navigate('Camera', { mealType: 'LUNCH' })}
+                activeOpacity={0.85}
+                onPress={() => openCamera(navigation)}
               >
                 <LinearGradient
                   colors={['#FF3B30', '#FF2D55']}
@@ -160,9 +178,11 @@ export const TabNavigator: React.FC = () => {
 
 const styles = StyleSheet.create({
   floatingScanContainer: {
-    top: -20,
+    top: -18,
     justifyContent: 'center',
     alignItems: 'center',
+    width: 68,
+    height: 68,
   },
   floatingScanButton: {
     width: 60,

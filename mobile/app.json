@@ -2,12 +2,13 @@
   "expo": {
     "name": "SnapCalora AI",
     "slug": "calora-ai",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#F9FAFB"
+      "backgroundColor": "#F9FAFB",
+      "image": "./assets/splash.png"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,8 +21,9 @@
     },
     "android": {
       "package": "com.calora.ai",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F9FAFB"
       },
       "permissions": [
@@ -69,6 +71,7 @@
       "eas": {
         "projectId": "66c4630b-334a-48f9-9cd1-e8009e5db9ee"
       }
-    }
+    },
+    "icon": "./assets/icon.png"
   }
 }
