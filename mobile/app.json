@@ -2,7 +2,7 @@
   "expo": {
     "name": "SnapCalora AI",
     "slug": "calora-ai",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.calora.ai",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "backgroundColor": "#F9FAFB"
       },

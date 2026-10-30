@@ -8,7 +8,7 @@ interface ThemeState {
 }
 
 const initialState: ThemeState = {
-  themeMode: 'light', // Defaults to clean light theme (#F9FAFB)
+  themeMode: 'system', // Follows system dark/light mode with zero flash
   unitSystem: 'metric',
 };
 

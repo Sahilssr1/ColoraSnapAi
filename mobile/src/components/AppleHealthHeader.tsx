@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sun, Moon, Smartphone } from 'lucide-react-native';
@@ -30,7 +30,8 @@ export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = memo(({
 }) => {
   const insets = useSafeAreaInsets();
   const { theme, isDark, themeMode, setTheme } = useTheme();
-  const topInset = Math.max(insets.top, Platform.OS === 'android' ? 12 : 8);
+  const androidBarHeight = RNStatusBar.currentHeight ?? 24;
+  const topInset = Platform.OS === 'android' ? (insets.top > 0 ? insets.top : androidBarHeight) : Math.max(insets.top, 8);
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(' ');

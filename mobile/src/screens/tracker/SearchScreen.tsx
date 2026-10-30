@@ -545,7 +545,7 @@ export const SearchScreen = ({ navigation }: any) => {
                     />
                     <TouchableOpacity
                       style={styles.logWeightBtn}
-                      onPress={handleSaveWeightToDatabase}
+                      onPress={handleSaveWeight}
                       disabled={isLoggingWeight}
                     >
                       {isLoggingWeight ? (
@@ -582,7 +582,7 @@ export const SearchScreen = ({ navigation }: any) => {
                     />
                     <TouchableOpacity
                       style={[styles.logWeightBtn, { backgroundColor: '#5856D6' }]}
-                      onPress={handleSaveSleepToDatabase}
+                      onPress={handleLogSleep}
                       disabled={isLoggingSleep}
                     >
                       {isLoggingSleep ? (

@@ -27,31 +27,22 @@ export const usePedometer = (initialSteps: number = 0) => {
   const [currentStepCount, setCurrentStepCount] = useState<number>(0);
   const [pastStepCount, setPastStepCount] = useState<number>(initialSteps);
   const [dailyHistory, setDailyHistory] = useState<StepRecord[]>([]);
-  // Native foreground-service totals (Android dev build only). While the
-  // service is the source of truth, the Expo watch below is not started,
-  // so the two can never race and double-count.
   const [nativeTodaySteps, setNativeTodaySteps] = useState<number>(0);
-  const [nativeFailed, setNativeFailed] = useState<boolean>(false);
-  const nativeFailCountRef = useRef<number>(0);
+
+  const initialStepsRef = useRef<number>(initialSteps);
+  useEffect(() => {
+    initialStepsRef.current = initialSteps;
+    setPastStepCount((prev) => Math.max(prev, initialSteps));
+    lastSyncCountRef.current = Math.max(lastSyncCountRef.current, initialSteps);
+  }, [initialSteps]);
 
   const lastSyncCountRef = useRef<number>(initialSteps);
-  // Keep the latest pastStepCount in a ref so the live subscription does
-  // not have to restart (and lose its session count) every time the
-  // past total changes — e.g. on a foreground refetch. Previously the
-  // watch effect depended on pastStepCount, so a refetch tore the
-  // subscription down and the new watch's steps overwrote the old
-  // session count, dropping steps on Android.
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const simIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<Pedometer.Subscription | null>(null);
 
   // Sync to PostgreSQL DB (Debounced)
   const syncStepsToBackend = useCallback(async (steps: number) => {
-    // Never post a LOWER total than already synced: the backend stores
-    // an absolute daily total, so a watch restart / service restart that
-    // reports a smaller number used to overwrite a larger real total
-    // with a regression. The backend also guards this now, but never
-    // sending the regression is the first line of defence.
     if (steps < lastSyncCountRef.current) return;
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -78,59 +69,75 @@ export const usePedometer = (initialSteps: number = 0) => {
     }
     syncTimeoutRef.current = setTimeout(() => {
       syncStepsToBackend(steps);
-    }, 3000);
+    }, 2500);
   }, [syncStepsToBackend]);
 
-  // The dashboard total arrives AFTER mount (it is a network query), so
-  // initialSteps changes from 0 to the real backend total. useState only
-  // reads the first value, so without this the hook kept counting from 0
-  // all day and its first sync overwrote the backend total with a smaller
-  // number. Take the max, never a lower value.
-  useEffect(() => {
-    setPastStepCount((prev) => Math.max(prev, initialSteps));
-    lastSyncCountRef.current = Math.max(lastSyncCountRef.current, initialSteps);
-  }, [initialSteps]);
-
-  // Native foreground-service tracking (Android dev build only).
-  // Polling, not an event bridge: the service writes totals to
-  // SharedPreferences, JS reads them every 2 seconds, and state is only
-  // updated when the value actually changed — so polling cannot cause
-  // the re-render flicker that per-step setState used to cause in the
-  // header. On any repeated failure, fall back to the Expo watch.
-  useEffect(() => {
+  // Read native step tracker from Android SharedPreferences
+  const pollNativeSteps = useCallback(async () => {
     if (!isNativeStepTrackerAvailable) return;
-    let stopped = false;
-    let interval: NodeJS.Timeout | null = null;
-    const boot = async () => {
-      const granted = await ensureTrackingPermissions();
-      if (stopped || !granted) return;
-      const started = await startNativeTracking();
-      if (stopped || !started) return;
-      interval = setInterval(async () => {
-        const status = await getNativeSteps();
-        if (stopped) return;
-        if (!status || !status.sensorAvailable) {
-          nativeFailCountRef.current += 1;
-          if (nativeFailCountRef.current >= 3) setNativeFailed(true);
-          return;
-        }
-        nativeFailCountRef.current = 0;
+    try {
+      const status = await getNativeSteps();
+      if (status && typeof status.todaySteps === 'number') {
         setIsSensorTracking(true);
-        setNativeTodaySteps((prev) => (prev === status.todaySteps ? prev : status.todaySteps));
-        const total = Math.max(status.todaySteps, initialSteps);
-        if (total - lastSyncCountRef.current >= 5) {
+        setNativeTodaySteps((prev) => Math.max(prev, status.todaySteps));
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        AsyncStorage.setItem(STORAGE_KEY_STEPS, String(status.todaySteps)).catch(() => {});
+        AsyncStorage.setItem(STORAGE_KEY_DATE, todayStr).catch(() => {});
+
+        const total = Math.max(status.todaySteps, initialStepsRef.current);
+        if (total > lastSyncCountRef.current && total - lastSyncCountRef.current >= 3) {
           scheduleDbSync(total);
         }
-      }, 2000);
-    };
-    boot();
-    return () => {
-      stopped = true;
-      if (interval) clearInterval(interval);
-    };
-  }, [initialSteps, scheduleDbSync]);
+      }
+    } catch (err) {
+      console.log('Error reading native steps:', err);
+    }
+  }, [scheduleDbSync]);
 
-  // Load saved historical days
+  // 1. Restore cached steps on instant cold-start (zero delay)
+  useEffect(() => {
+    const restoreCache = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const savedDate = await AsyncStorage.getItem(STORAGE_KEY_DATE);
+        if (savedDate === todayStr) {
+          const savedSteps = await AsyncStorage.getItem(STORAGE_KEY_STEPS);
+          if (savedSteps) {
+            const parsed = parseInt(savedSteps, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              setNativeTodaySteps((prev) => Math.max(prev, parsed));
+            }
+          }
+        }
+      } catch {}
+    };
+    restoreCache();
+  }, []);
+
+  // 2. Poll native steps immediately and continuously every 1.5s
+  useEffect(() => {
+    if (!isNativeStepTrackerAvailable) return;
+
+    // Immediate read on mount
+    pollNativeSteps();
+
+    // Polling interval
+    const interval = setInterval(pollNativeSteps, 1500);
+
+    // Ensure permissions and launch background service
+    ensureTrackingPermissions()
+      .then((granted) => {
+        if (granted) {
+          startNativeTracking().catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    return () => clearInterval(interval);
+  }, [pollNativeSteps]);
+
+  // 3. Load saved historical days
   useEffect(() => {
     const loadHistory = async () => {
       try {
@@ -145,19 +152,18 @@ export const usePedometer = (initialSteps: number = 0) => {
           setDailyHistory(historyList);
         }
       } catch (e) {
-        console.error("Failed to load step history:", e);
+        console.error('Failed to load step history:', e);
       }
     };
     loadHistory();
   }, []);
 
-  // Fetch OS Hardware Steps for Today
+  // 4. Fetch OS Hardware Steps for Today (iOS HealthKit fallback)
   const fetchTodayStepsFromOS = useCallback(async () => {
     try {
       const { status } = await Pedometer.requestPermissionsAsync();
       if (status !== 'granted') {
         setIsPedometerAvailable(false);
-        setIsSensorTracking(false);
         return;
       }
 
@@ -167,39 +173,33 @@ export const usePedometer = (initialSteps: number = 0) => {
       if (available) {
         const end = new Date();
         const start = new Date();
-        start.setHours(0, 0, 0, 0); // Midnight today
+        start.setHours(0, 0, 0, 0);
 
         try {
-          // This throws an error on Android!
           const result = await Pedometer.getStepCountAsync(start, end);
           if (result && result.steps !== undefined) {
-            // Native OS steps are absolute for the day!
-            // We override manual steps if OS has higher step count.
-            setPastStepCount(prev => Math.max(prev, result.steps, initialSteps));
-            
-            if (result.steps - lastSyncCountRef.current >= 5) {
+            setPastStepCount((prev) => Math.max(prev, result.steps, initialStepsRef.current));
+            if (result.steps - lastSyncCountRef.current >= 3) {
               scheduleDbSync(result.steps);
             }
           }
-        } catch (innerError) {
-          console.log('Historical steps not available (Android expected):', innerError);
-          // Do nothing! We want to keep isPedometerAvailable = true so live tracking still works!
+        } catch {
+          // Expected on Android (getStepCountAsync is iOS-only)
         }
       }
-    } catch (error) {
-      console.log('Error checking OS pedometer availability:', error);
+    } catch {
       setIsPedometerAvailable(false);
     }
-  }, [initialSteps, scheduleDbSync]);
+  }, [scheduleDbSync]);
 
-  // Handle Foreground / Background Lifecycle
+  // 5. Handle Foreground / Background Lifecycle (poll native immediately on app open)
   useEffect(() => {
-    // 1. Fetch steps immediately on mount
+    pollNativeSteps();
     fetchTodayStepsFromOS();
 
-    // 2. Fetch steps every time the app comes back to the foreground
     const appStateSubscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
+        pollNativeSteps();
         fetchTodayStepsFromOS();
       }
     });
@@ -207,36 +207,26 @@ export const usePedometer = (initialSteps: number = 0) => {
     return () => {
       appStateSubscription.remove();
     };
-  }, [fetchTodayStepsFromOS]);
+  }, [pollNativeSteps, fetchTodayStepsFromOS]);
 
-  const pastStepCountRef = useRef<number>(initialSteps);
+  // 6. Live step tracking fallback via Expo Pedometer (when native service is unavailable)
   useEffect(() => {
-    pastStepCountRef.current = pastStepCount;
-  }, [pastStepCount]);
+    if (isNativeStepTrackerAvailable) return;
+    let sub: Pedometer.Subscription | null = null;
 
-  // Live step tracking while app is open. NOTE: this is foreground-only
-  // by Expo's design — Pedometer updates are not delivered while the app
-  // is in the background, and getStepCountAsync (the iOS catch-up path
-  // above) is not supported on Android. On Android dev builds the native
-  // foreground service above is the source of truth instead, so the
-  // watch is skipped there (starting both would race and double-count);
-  // it only starts if the native service has failed.
-  useEffect(() => {
-    if (isNativeStepTrackerAvailable && !nativeFailed) return;
     const startLiveTracking = async () => {
       try {
         if (!isPedometerAvailable) return;
-
         setIsSensorTracking(true);
-        subscriptionRef.current = Pedometer.watchStepCount(result => {
+        sub = Pedometer.watchStepCount((result) => {
           setCurrentStepCount(result.steps);
-
-          const nextTotal = pastStepCountRef.current + result.steps;
-          if (nextTotal - lastSyncCountRef.current >= 5) {
-             scheduleDbSync(nextTotal);
+          const nextTotal = pastStepCount + result.steps;
+          if (nextTotal - lastSyncCountRef.current >= 3) {
+            scheduleDbSync(nextTotal);
           }
         });
-      } catch (e) {
+        subscriptionRef.current = sub;
+      } catch {
         setIsSensorTracking(false);
       }
     };
@@ -244,17 +234,12 @@ export const usePedometer = (initialSteps: number = 0) => {
     startLiveTracking();
 
     return () => {
-      if (subscriptionRef.current) {
-        subscriptionRef.current.remove();
-        subscriptionRef.current = null;
-      }
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
+      if (sub) sub.remove();
+      subscriptionRef.current = null;
     };
-  }, [isPedometerAvailable, nativeFailed, scheduleDbSync]);
+  }, [isPedometerAvailable, pastStepCount, scheduleDbSync]);
 
-  // Toggle Live Walk Simulation (for testing walking live on simulator/desk)
+  // 7. Toggle Live Walk Simulation
   const toggleWalkSimulation = useCallback(() => {
     if (isWalkingSimulated) {
       if (simIntervalRef.current) clearInterval(simIntervalRef.current);
@@ -263,26 +248,24 @@ export const usePedometer = (initialSteps: number = 0) => {
       setIsWalkingSimulated(true);
       simIntervalRef.current = setInterval(() => {
         setCurrentStepCount((prev) => {
-          const nextCurrent = prev + 2; // +2 steps per stride
+          const nextCurrent = prev + 2;
           const nextTotal = pastStepCount + nextCurrent;
-
-          if (nextTotal - lastSyncCountRef.current >= 6) {
+          if (nextTotal - lastSyncCountRef.current >= 4) {
             scheduleDbSync(nextTotal);
           }
           return nextCurrent;
         });
-      }, 700); // 700ms normal walking step interval
+      }, 700);
     }
   }, [isWalkingSimulated, pastStepCount, scheduleDbSync]);
 
-  // Clean up simulation timer
   useEffect(() => {
     return () => {
       if (simIntervalRef.current) clearInterval(simIntervalRef.current);
     };
   }, []);
 
-  // Add manual steps & sync to database
+  // 8. Add manual steps & sync to database
   const addSteps = async (count: number) => {
     const nextCount = pastStepCount + currentStepCount + count;
     setPastStepCount(nextCount);
@@ -292,20 +275,15 @@ export const usePedometer = (initialSteps: number = 0) => {
     } catch {}
   };
 
-  // Native reconciliation: the service's today total is steps since its
-  // first start today (persisted in SharedPreferences across restarts),
-  // while initialSteps is the last backend-synced total. Taking the max
-  // avoids double-counting (never add them) and avoids regressing to a
-  // smaller number after a service restart. Steps taken before the
-  // service ever started today cannot be recovered on Android without
-  // Health Connect — that is a platform limit, not a counting bug, and
-  // it is the same limit the old foreground-only watch had.
-  const totalSteps =
-    isNativeStepTrackerAvailable && !nativeFailed
-      ? Math.max(nativeTodaySteps, initialSteps)
-      : pastStepCount + currentStepCount;
+  // Reconciled Total Steps: Max of Native Service, Past/Current Expo sensor, and Backend DB
+  const totalSteps = Math.max(
+    nativeTodaySteps,
+    pastStepCount + currentStepCount,
+    initialSteps
+  );
+
   const burnedCalories = Math.round(totalSteps * 0.04);
-  const distanceKm = Number((totalSteps * 0.000762).toFixed(2)); // Average 0.762m stride length
+  const distanceKm = Number((totalSteps * 0.000762).toFixed(2));
 
   return {
     isPedometerAvailable,
