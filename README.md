@@ -1,147 +1,256 @@
-# Calora AI — Enterprise Nutrition & Visual Calorie Tracking Platform
+<p align="center">
+  <img src="assets/logo.png" width="180" height="180" alt="SnapCalora AI Logo" style="border-radius: 36px; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.25);" />
+</p>
 
-> **Calora AI** is a production-grade, multi-platform health and nutrition tracking ecosystem built with **React Native (Expo + TypeScript + NativeWind)** and a robust **Node.js (TypeScript + Express + Prisma + PostgreSQL + Redis)** backend. It combines multi-modal AI vision with clinical nutrition intelligence, barcode scanning, and Apple Health-style telemetry rings.
+<h1 align="center">SnapCalora AI</h1>
 
----
+<p align="center">
+  <strong>Snap. Scan. Track. Eat Smarter.</strong><br>
+  An enterprise-grade, visual AI nutrition & intelligent fitness tracking platform built with React Native and Node.js.
+</p>
 
-## 🌟 Key Features
-
-### 1. 📸 Visual AI Food Recognition & Multi-Item Plate Parsing
-- **Multi-Nutrient Detection**: Uses multi-modal AI vision to detect individual food components on a plate, segment portions, and estimate weights.
-- **30+ Nutrient Panel**: Calculates Calories, Macros (Protein, Carbs, Fats), Fiber, Sugar, Sodium, and complete Micronutrients (Vitamins A, B, C, D, E, K, Iron, Calcium, Magnesium, Potassium, Zinc, Omega-3).
-- **Portion Adjustments**: Interactive multipliers (0.5x, 1.0x, 1.5x, 2.0x) with real-time macro recalculations.
-
-### 2. ⚡ Real-Time Barcode Scanner
-- **Dual Database Fallback**: Queries local database, Redis cache, OpenFoodFacts Global API, and USDA FoodData Central.
-- **Instant Product Match**: Live camera frame scanner with sound & haptic response.
-
-### 3. 🍏 Apple Health-Inspired Dashboard
-- **Concentric SVG Progress Rings**: Displays Calorie burn, Protein, Carbohydrates, and Fats in smooth interactive rings.
-- **Micro-Nutrient Matrix**: Daily RDA (Recommended Dietary Allowance) balance grid.
-- **Smart Food Swaps**: Clinical AI suggestions replacing nutrient-sparse foods with high-density whole food alternatives.
-- **Hydration Tracker**: One-tap water logging (+250ml / +500ml) with animated liquid fill.
-
-### 4. 🔬 Clinical Nutrition Engine (Mifflin-St Jeor & RDA)
-- **BMR & TDEE Calculations**: Personalized metabolic calculations based on age, gender, height, weight, and activity level.
-- **Nutrient Flags & Excess Warnings**: Automatic detection of low iron, deficient vitamin D, or high sodium/sugar intake.
+<p align="center">
+  <img src="https://img.shields.io/badge/Expo-SDK_51-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo SDK 51" />
+  <img src="https://img.shields.io/badge/React_Native-0.74-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Groq-Vision_AI-F55036?style=for-the-badge&logo=groq&logoColor=white" alt="Groq AI" />
+  <img src="https://img.shields.io/badge/Open_Food_Facts-Open_Source-FF6B6B?style=for-the-badge" alt="Open Food Facts" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Neon_Cloud-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="License MIT" />
+</p>
 
 ---
 
-## 🏗️ Architecture Overview
+## 📖 Table of Contents
+
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+  - [1. Visual AI Food Recognition (Groq Vision)](#1--visual-ai-food-recognition-groq-vision)
+  - [2. Open-Source Barcode Scanner (Open Food Facts)](#2--open-source-barcode-scanner-open-food-facts)
+  - [3. Apple Health-Inspired Telemetry Dashboard](#3--apple-health-inspired-telemetry-dashboard)
+  - [4. Instant Launch & Offline Session Persistence](#4--instant-launch--offline-session-persistence)
+  - [5. Clinical Nutrition & BMR/TDEE Engine](#5--clinical-nutrition--bmrtdee-engine)
+- [System Architecture](#️-system-architecture)
+- [Technology Stack](#-technology-stack)
+- [Getting Started](#-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Backend Setup](#backend-setup)
+  - [Mobile App Setup](#mobile-app-setup)
+- [Build & Deployment](#-build--deployment)
+  - [Android APK / Play Store AAB (EAS Build)](#android-apk--play-store-aab-eas-build)
+  - [Render Cloud Deployment](#render-cloud-deployment)
+- [Environment Configuration](#-environment-configuration)
+- [License](#-license)
+
+---
+
+## 🌟 Overview
+
+**SnapCalora AI** is a production-grade health and fitness ecosystem designed to eliminate manual food logging. By combining cutting-edge multimodal Vision AI with real-time motion sensor tracking and open-source nutritional databases, SnapCalora AI enables users to understand their nutrition and caloric balance with sub-second camera recognition.
+
+Whether you're snapping a photo of a home-cooked meal, scanning a packaged product barcode at the grocery store, or monitoring steps and active burn throughout the day, SnapCalora AI delivers clinical precision in an Apple Health-inspired user interface.
+
+---
+
+## ✨ Key Features
+
+### 1. 📸 Visual AI Food Recognition (Groq Vision)
+- **High-Speed Multimodal Inference**: Powered by Groq's high-throughput LPU engine running open-weights multimodal vision (`qwen/qwen3.8-27b`) delivering sub-2s meal analysis.
+- **Multi-Item Ingredient Segmentation**: Accurately recognizes individual food components on a single plate (e.g., grilled chicken breast, quinoa, avocado slices, leafy greens).
+- **30+ Nutrient Panel**: Calculates exact Calories, Macros (Protein, Net Carbs, Fats), Dietary Fiber, Sugars, Sodium, Micronutrients (Vitamins A, B, C, D, E, K, Iron, Calcium, Zinc, Potassium, Magnesium, Omega-3), and Glycemic Load.
+- **Portion Multiplier**: Interactive portion adjustment (0.5×, 1.0×, 1.5×, 2.0×) with dynamic recalculation of all nutrients.
+
+### 2. ⚡ Open-Source Barcode Scanner (Open Food Facts)
+- **Global Food Database Integration**: Direct interface with **Open Food Facts**, the world's largest open-source, non-profit packaged food repository (over 3,000,000 products).
+- **Smart Code Normalization**: Automatically resolves UPC-A (12-digit) and EAN-13 (13-digit zero-padded) variants and queries both v2 and v0 API endpoints.
+- **Resilient Client-Side Fallback**: Built-in direct client querying ensures instant barcode matches even if the backend server is waking up or cold-starting.
+
+### 3. 🍏 Apple Health-Inspired Telemetry Dashboard
+- **Live Hardware Step Tracker**: Native Android sensor integration with a persistent foreground tracker that runs reliably while the app is minimized or the screen is locked.
+- **Concentric SVG Progress Rings**: Live rings visualising active calorie burn, exercise minutes, and daily step goal completion.
+- **Clinical Sleep Tracker**: Log sleep duration and receive automated clinical sleep scores (0–100) with recovery feedback.
+- **Hydration Tracker**: One-tap quick water logging (+250ml / +500ml) with interactive hydration progress bars.
+- **Modern Adaptive Theme**: Instant toggle between Apple Health Dark Theme (`#111827`) and Clean Light Theme (`#F9FAFB`).
+
+### 4. ⚡ Instant Launch & Offline Session Persistence
+- **Sub-350ms Launch Time**: Zero artificial startup delays; loads directly to the dashboard in under 350ms.
+- **Offline Session Caching**: Secure local profile caching preserves user sessions indefinitely across app closes, preventing accidental logouts.
+- **Silent Background Sync**: Refreshes profile biometrics in the background without blocking the UI or disrupting the user.
+
+### 5. 🔬 Clinical Nutrition & BMR/TDEE Engine
+- **Mifflin-St Jeor Formula**: Calculates Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE) tailored to age, gender, height, weight, and activity level.
+- **RDA Micronutrient Comparison**: Evaluates daily micronutrient consumption against clinical Recommended Dietary Allowances.
+
+---
+
+## 🏗️ System Architecture
 
 ```
-Calora/
-├── backend/                  # REST API Service
-│   ├── prisma/               # Database schemas & migrations
+SnapCalora/
+├── backend/                       # REST API Backend Service (Node.js + Express)
+│   ├── prisma/                    # Prisma ORM schemas & PostgreSQL migrations
 │   ├── src/
-│   │   ├── config/           # Environment, Swagger, Redis configs
-│   │   ├── controllers/      # REST API Controllers
-│   │   ├── middlewares/      # Auth JWT, Rate Limiter, Error handling
-│   │   ├── repositories/     # Database layer (Repository Pattern)
-│   │   ├── routes/           # Express Route definitions
-│   │   ├── services/         # Business & Clinical Nutrition logic
-│   │   └── types/            # TypeScript interfaces
-│   └── tests/                # Unit & Integration test suites
-│
-├── mobile/                   # React Native (Expo) Mobile App
-│   ├── src/
-│   │   ├── api/              # Axios client & TanStack Query hooks
-│   │   ├── components/       # Reusable UI (Rings, Charts, GlassCards)
-│   │   ├── navigation/       # React Navigation (Stack & Tab Navigators)
-│   │   ├── redux/            # Redux Toolkit store & slices
-│   │   ├── screens/          # Application Screens (Auth, Tracker, Scanner, Profile)
-│   │   ├── theme/            # Color tokens, typography, dark mode
-│   │   └── types/            # Domain models & state types
-│   ├── App.tsx               # Root App component
+│   │   ├── config/                # Environment, Logger, Redis, Swagger
+│   │   ├── controllers/           # Auth, Meal, Scan, User Controllers
+│   │   ├── middlewares/           # JWT Auth, Rate Limiter, Error Handling
+│   │   ├── repositories/          # Database query layer (Prisma)
+│   │   ├── routes/                # Express REST endpoint declarations
+│   │   ├── services/              # AiVisionService (Groq), BarcodeService, UserService
+│   │   └── validators/            # Zod request payload schemas
 │   └── package.json
 │
-├── docker-compose.yml        # Multi-container orchestration
-└── .github/workflows/ci.yml  # Automated CI/CD Pipeline
+├── mobile/                        # React Native Mobile App (Expo SDK 51)
+│   ├── assets/                    # Launcher icons, adaptive icons, splash screens
+│   ├── android/                   # Native Android project configuration
+│   ├── src/
+│   │   ├── api/                   # Axios client, TanStack Query hooks
+│   │   ├── components/            # Concentric Rings, AppleHealthHeader, AppLogo
+│   │   ├── context/               # Theme and application context
+│   │   ├── hooks/                 # usePedometer (native step sensor hook)
+│   │   ├── navigation/            # RootStack & TabNavigator (React Navigation v6)
+│   │   ├── redux/                 # Redux Toolkit store (authSlice, dashboardSlice)
+│   │   ├── screens/               # Auth, Scanner, Tracker, Analytics, Profile
+│   │   ├── theme/                 # Dark/Light palettes, tokens, typography
+│   │   └── types/                 # Shared domain interfaces
+│   ├── app.json                   # Expo application manifest
+│   └── package.json
+│
+├── assets/                        # High-resolution branding & README assets
+│   └── logo.png                   # SnapCalora AI brand emblem
+├── docker-compose.yml             # Local PostgreSQL & Redis container orchestration
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## 💻 Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Mobile Client** | React Native 0.74, Expo SDK 51, TypeScript, React Navigation v6, Redux Toolkit, React Native Reanimated, Expo Camera, Expo Linear Gradient, Lucide Icons |
+| **Backend API** | Node.js (v20+), Express.js, TypeScript, Prisma ORM, Neon Serverless PostgreSQL, Redis Cache, Zod, Swagger OpenAPI 3.0 |
+| **AI Vision Engine** | Groq Cloud LPU Vision (`qwen/qwen3.8-27b`), xAI Grok Vision (`grok-2-vision-1212`), Google Gemini Flash |
+| **Food Databases** | Open Food Facts (Open Source Global Database), USDA FoodData Central |
+| **Infrastructure** | Docker, Render Cloud Hosting, Expo Application Services (EAS Cloud Build) |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js >= 20.x
-- Docker & Docker Compose
-- Expo Go App (on iOS or Android device) or Mobile Simulator
+- **Node.js** >= 20.x
+- **pnpm** (preferred) or **npm**
+- **Docker & Docker Compose** (for local database and Redis)
+- **Expo Go App** (Android / iOS) or an Android Virtual Device / Physical Phone
 
 ---
 
-### Step 1: Start Infrastructure with Docker Compose
+### Backend Setup
 
-Run PostgreSQL and Redis in the background:
-```bash
-docker-compose up -d postgres redis
-```
+1. **Navigate to the backend directory**:
+   ```bash
+   cd backend
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pnpm install
+   ```
+
+3. **Configure environment variables**:
+   Create a `.env` file in `backend/` based on `.env.example`:
+   ```env
+   PORT=5000
+   DATABASE_URL="postgresql://user:password@localhost:5432/calora_db?sslmode=require"
+   JWT_ACCESS_SECRET="your_jwt_access_secret_key"
+   JWT_REFRESH_SECRET="your_jwt_refresh_secret_key"
+   GROQ_API_KEY="gsk_your_groq_api_key_here"
+   GROQ_MODEL="qwen/qwen3.8-27b"
+   OPENFOODFACTS_BASE_URL="https://world.openfoodfacts.org/api/v2"
+   ```
+
+4. **Initialize database schema**:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+5. **Start development server**:
+   ```bash
+   pnpm run dev
+   ```
+   - **API Endpoint**: `http://localhost:5000/api/v1`
+   - **Swagger Docs**: `http://localhost:5000/api/docs`
 
 ---
 
-### Step 2: Setup & Launch Backend
+### Mobile App Setup
 
-```bash
-cd backend
+1. **Navigate to the mobile directory**:
+   ```bash
+   cd mobile
+   ```
 
-# Install dependencies
-npm install
+2. **Install dependencies**:
+   ```bash
+   pnpm install
+   ```
 
-# Run database migrations & generate Prisma client
-npx prisma generate
-npx prisma db push
+3. **Start the Expo development server**:
+   ```bash
+   pnpm run start
+   ```
 
-# Start development server
-npm run dev
-```
-
-Backend will be available at `http://localhost:5000`.
-- **API Base URL**: `http://localhost:5000/api/v1`
-- **Swagger Documentation**: `http://localhost:5000/api/docs`
-- **Health Check**: `http://localhost:5000/health`
+4. **Run on your device**:
+   - Press `a` to run on a connected Android device / emulator.
+   - Or scan the terminal QR code with the **Expo Go** app on your physical smartphone.
 
 ---
 
-### Step 3: Setup & Launch Mobile App
+## 📦 Build & Deployment
 
+### Android APK / Play Store AAB (EAS Build)
+
+SnapCalora AI uses **Expo Application Services (EAS Build)** for fast, reproducible cloud builds on dedicated Linux build infrastructure.
+
+#### Installable Android APK (Preview Profile)
 ```bash
 cd mobile
-
-# Install dependencies
-npm install
-
-# Start Expo development server
-npx expo start
+pnpm dlx eas-cli build -p android --profile preview
 ```
 
-Press `i` for iOS Simulator, `a` for Android Emulator, or scan the QR code with the **Expo Go** app on your physical mobile device.
+#### Production Google Play App Bundle (`.aab`)
+```bash
+cd mobile
+pnpm dlx eas-cli build -p android --profile production
+```
 
 ---
 
-## 🧪 Running Automated Tests
+### Render Cloud Deployment
 
-### Backend Unit & Integration Tests
-```bash
-cd backend
-npm test
-```
-
-### Mobile TypeScript Type Checking
-```bash
-cd mobile
-npx tsc --noEmit
-```
+The backend is configured for continuous deployment on **Render.com**:
+- **Build Command**: `cd backend && pnpm install && npx prisma generate && pnpm run build`
+- **Start Command**: `cd backend && pnpm run start`
+- Auto-deploys seamlessly on every push to the `main` branch.
 
 ---
 
 ## 🔒 Security & Performance Features
 
-- **JWT Authentication**: Short-lived Access Tokens (15 min) + Long-lived Refresh Tokens (7 days) with automated Axios interceptor rotation.
-- **Rate Limiting**: Configured express-rate-limit protecting against brute force attacks.
-- **Redis Caching**: Caches food queries, USDA items, and user dashboard statistics.
-- **Encrypted Storage**: Secure token persistence using `@react-native-async-storage/async-storage`.
+- **JWT Authentication Flow**: Short-lived Access Tokens (15 min) + Long-lived Refresh Tokens (30 days) with automated Axios interceptor rotation.
+- **Fail-Safe Session Handling**: Network drops, cold-start delays, or server wake-ups never kick users to the login screen; session tokens are only cleared upon explicit 401/403 authorization rejection.
+- **Rate Limiting**: Integrated `express-rate-limit` protecting endpoints against brute-force and scraping attempts.
+- **High-Performance Redis Caching**: 24-hour caching for barcode lookups and nutrition metadata.
 
 ---
 
 ## 📄 License
-MIT © 2026 Calora AI Inc. All rights reserved.
+
+Distributed under the **MIT License**. See `LICENSE` for more information.
+
+---
+
+<p align="center">
+  Built with ❤️ for health, fitness, and nutrition awareness.
+</p>
