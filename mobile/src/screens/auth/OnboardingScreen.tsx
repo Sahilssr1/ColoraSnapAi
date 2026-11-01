@@ -5,10 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -427,7 +428,7 @@ const styles = StyleSheet.create({
   },
   showcaseScroll: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 16 : 16,
     paddingBottom: 40,
   },
   topAura: {
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
   brandHero: {
     alignItems: 'center',
     marginBottom: 20,
-    marginTop: 6,
+    marginTop: 12,
   },
   cardsList: {
     gap: 12,

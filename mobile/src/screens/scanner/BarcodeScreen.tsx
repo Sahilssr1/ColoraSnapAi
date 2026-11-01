@@ -1,17 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { apiClient } from '../../api/client';
@@ -24,6 +25,7 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
   const mealType = route.params?.mealType || 'LUNCH';
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState('Searching Open Food Facts...');
   const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
 
   // Auto-request permission on mount
@@ -34,6 +36,63 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
       requestPermission();
     }
   }, [permission]);
+
+  // Open-source Open Food Facts direct client lookup
+  const fetchOpenFoodFactsDirect = async (rawBarcode: string) => {
+    const clean = rawBarcode.trim();
+    const barcodeVariants = [
+      clean,
+      clean.length === 12 ? '0' + clean : null,
+      clean.length === 13 && clean.startsWith('0') ? clean.slice(1) : null,
+    ].filter(Boolean) as string[];
+
+    for (const b of barcodeVariants) {
+      const endpoints = [
+        `https://world.openfoodfacts.org/api/v2/product/${b}.json`,
+        `https://world.openfoodfacts.org/api/v0/product/${b}.json`,
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const res = await axios.get(url, {
+            timeout: 6000,
+            headers: { 'User-Agent': 'SnapCaloraAI-Android - Version 1.0.7' },
+          });
+
+          if (res.data?.status === 1 && res.data?.product) {
+            const product = res.data.product;
+            const nutriments = product.nutriments || {};
+            const calories =
+              nutriments['energy-kcal_100g'] ??
+              nutriments['energy-kcal'] ??
+              (nutriments['energy_100g'] ? nutriments['energy_100g'] / 4.184 : 0);
+
+            return {
+              id: `off_${b}`,
+              name: product.product_name || product.generic_name || 'Packaged Food Item',
+              brand: product.brands || product.brand_owner || 'Open Food Facts',
+              barcode: b,
+              image: product.image_front_url || product.image_url || null,
+              servingSize: product.serving_quantity ? Number(product.serving_quantity) : 100,
+              servingUnit: 'g',
+              calories: Math.round(calories),
+              protein: Number((nutriments['proteins_100g'] ?? nutriments['proteins'] ?? 0).toFixed(1)),
+              carbs: Number((nutriments['carbohydrates_100g'] ?? nutriments['carbohydrates'] ?? 0).toFixed(1)),
+              fat: Number((nutriments['fat_100g'] ?? nutriments['fat'] ?? 0).toFixed(1)),
+              fiber: Number((nutriments['fiber_100g'] ?? nutriments['fiber'] ?? 0).toFixed(1)),
+              sugar: Number((nutriments['sugars_100g'] ?? nutriments['sugars'] ?? 0).toFixed(1)),
+              sodium: Math.round((nutriments['sodium_100g'] ?? 0) * 1000),
+              source: 'OPEN_FOOD_FACTS' as const,
+              confidenceScore: 0.99,
+            };
+          }
+        } catch {
+          // Continue to next endpoint/variant
+        }
+      }
+    }
+    return null;
+  };
 
   if (!permission) {
     return (
@@ -67,35 +126,57 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
 
     try {
       setIsScanning(true);
+      setScanStatus('Scanning product barcode...');
       setLastScannedBarcode(barcode);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const response = await apiClient.post('/scan/barcode', { barcode });
+      let foundFood = null;
 
-      if (response.data.success && response.data.data?.food) {
+      // 1. First attempt: backend lookup (with 5-second timeout)
+      try {
+        const response = await apiClient.post(
+          '/scan/barcode',
+          { barcode },
+          { timeout: 5000 }
+        );
+        if (response.data.success && response.data.data?.food) {
+          foundFood = response.data.data.food;
+        }
+      } catch {
+        // Backend sleeping or cold start: fall through to direct Open Food Facts
+      }
+
+      // 2. Direct fallback: query Open Food Facts (Open Source Global Food Database)
+      if (!foundFood) {
+        setScanStatus('Checking Open Food Facts database...');
+        foundFood = await fetchOpenFoodFactsDirect(barcode);
+      }
+
+      if (foundFood) {
         navigation.replace('FoodDetail', {
-          food: response.data.data.food,
+          food: foundFood,
           mealType,
         });
-      } else {
-        Alert.alert(
-          'Product Not Found',
-          `No food data found for barcode: ${barcode}. Try searching by name or scanning with AI photo.`,
-          [
-            {
-              text: 'Try Photo Scan',
-              onPress: () => navigation.replace('Camera', { mealType }),
-            },
-            {
-              text: 'Scan Again',
-              onPress: () => {
-                setLastScannedBarcode(null);
-                setIsScanning(false);
-              },
-            },
-          ]
-        );
+        return;
       }
+
+      Alert.alert(
+        'Product Not Found',
+        `No food entry found for barcode ${barcode} in the Open Food Facts database. You can take a photo of the food or search by name.`,
+        [
+          {
+            text: 'Take Photo Instead',
+            onPress: () => navigation.replace('Camera', { mealType }),
+          },
+          {
+            text: 'Scan Again',
+            onPress: () => {
+              setLastScannedBarcode(null);
+              setIsScanning(false);
+            },
+          },
+        ]
+      );
     } catch (err: any) {
       Alert.alert(
         'Scan Error',
@@ -121,7 +202,7 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
         style={StyleSheet.absoluteFillObject}
         facing="back"
         barcodeScannerSettings={{
-          barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'qr', 'code128', 'code39'],
+          barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'],
         }}
         onBarcodeScanned={isScanning ? undefined : handleBarcodeScanned}
       />
@@ -138,7 +219,7 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
 
           <View style={styles.titleBadge}>
-            <Text style={styles.titleText}>Barcode Scanner</Text>
+            <Text style={styles.titleText}>Barcode Scanner (OpenFoodFacts)</Text>
           </View>
 
           <TouchableOpacity
@@ -164,11 +245,11 @@ export const BarcodeScreen: React.FC<Props> = ({ navigation, route }) => {
             {isScanning && (
               <View style={styles.loadingOverlay}>
                 <ActivityIndicator size="large" color="#22C55E" />
-                <Text style={styles.loadingText}>Looking up product data...</Text>
+                <Text style={styles.loadingText}>{scanStatus}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.hintText}>Align barcode inside the frame</Text>
+          <Text style={styles.hintText}>Align food barcode inside the frame</Text>
         </View>
 
         {/* Bottom Manual Search Shortcut */}
@@ -261,7 +342,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   titleBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 16,
@@ -270,11 +351,13 @@ const styles = StyleSheet.create({
   },
   titleText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   aiPhotoSwitch: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(34, 197, 94, 0.3)',
+    borderColor: '#22C55E',
+    borderWidth: 1,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 16,
@@ -282,15 +365,15 @@ const styles = StyleSheet.create({
   aiPhotoSwitchText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   viewfinderContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   targetFrame: {
-    width: 280,
-    height: 180,
+    width: 290,
+    height: 190,
     borderRadius: 16,
     position: 'relative',
     justifyContent: 'center',
@@ -298,8 +381,8 @@ const styles = StyleSheet.create({
   },
   corner: {
     position: 'absolute',
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderColor: '#22C55E',
   },
   topLeft: {
@@ -307,74 +390,78 @@ const styles = StyleSheet.create({
     left: 0,
     borderTopWidth: 4,
     borderLeftWidth: 4,
-    borderTopLeftRadius: 12,
+    borderTopLeftRadius: 14,
   },
   topRight: {
     top: 0,
     right: 0,
     borderTopWidth: 4,
     borderRightWidth: 4,
-    borderTopRightRadius: 12,
+    borderTopRightRadius: 14,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
     borderBottomWidth: 4,
     borderLeftWidth: 4,
-    borderBottomLeftRadius: 12,
+    borderBottomLeftRadius: 14,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
     borderBottomWidth: 4,
     borderRightWidth: 4,
-    borderBottomRightRadius: 12,
+    borderBottomRightRadius: 14,
   },
   laserLine: {
-    width: '90%',
+    width: 260,
     height: 2,
-    backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
+    backgroundColor: '#22C55E',
+    shadowColor: '#22C55E',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.9,
     shadowRadius: 6,
     elevation: 4,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.82)',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   loadingText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginTop: 10,
+    textAlign: 'center',
   },
   hintText: {
     color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 13,
-    marginTop: 16,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   bottomBar: {
     paddingHorizontal: 24,
-    paddingBottom: 36,
-    alignItems: 'center',
+    paddingBottom: 28,
   },
   manualSearchBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   manualSearchText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

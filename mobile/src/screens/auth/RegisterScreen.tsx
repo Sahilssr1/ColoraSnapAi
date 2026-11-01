@@ -9,7 +9,9 @@ import {
   TextInput,
   Platform,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -93,6 +95,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
       await AsyncStorage.setItem('calora_access_token', tokens.accessToken);
       await AsyncStorage.setItem('calora_refresh_token', tokens.refreshToken);
+      await AsyncStorage.setItem('calora_user_profile', JSON.stringify(user));
 
       dispatch(
         setCredentials({
@@ -403,7 +406,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 12 : 16,
     paddingBottom: 40,
   },
   topAura: {

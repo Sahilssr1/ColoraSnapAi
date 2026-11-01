@@ -101,6 +101,7 @@ export const ProfileScreen: React.FC = () => {
           try {
             await AsyncStorage.removeItem('calora_access_token');
             await AsyncStorage.removeItem('calora_refresh_token');
+            await AsyncStorage.removeItem('calora_user_profile');
             dispatch(logout());
             navigation.reset({
               index: 0,
@@ -152,6 +153,7 @@ export const ProfileScreen: React.FC = () => {
               await apiClient.delete('/user/profile');
               await AsyncStorage.removeItem('calora_access_token');
               await AsyncStorage.removeItem('calora_refresh_token');
+            await AsyncStorage.removeItem('calora_user_profile');
               dispatch(logout());
               navigation.reset({
                 index: 0,

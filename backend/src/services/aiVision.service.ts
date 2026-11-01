@@ -69,18 +69,7 @@ export class AiVisionService {
       ? env.GROK_API_KEY
       : (env.XAI_API_KEY || (env.OPENAI_API_KEY?.startsWith('xai-') ? env.OPENAI_API_KEY : undefined));
 
-    // 1. Try xAI Grok Vision if key is present
-    if (grokKey) {
-      try {
-        const grokResult = await this.callGrokVision(base64Image, grokKey);
-        if (grokResult) return grokResult;
-      } catch (err) {
-        lastError = err;
-        logger.warn('xAI Grok Vision API error:', (err as any)?.response?.data || (err as Error).message);
-      }
-    }
-
-    // 2. Try Groq Cloud if key is present
+    // 1. Try Groq Cloud Vision FIRST (Fastest inference & user choice for food scans)
     if (groqKey) {
       try {
         const groqResult = await this.callGroqVision(base64Image, groqKey);
@@ -88,6 +77,17 @@ export class AiVisionService {
       } catch (err) {
         lastError = err;
         logger.warn('Groq Vision API error:', (err as any)?.response?.data || (err as Error).message);
+      }
+    }
+
+    // 2. Try xAI Grok Vision if key is present
+    if (grokKey) {
+      try {
+        const grokResult = await this.callGrokVision(base64Image, grokKey);
+        if (grokResult) return grokResult;
+      } catch (err) {
+        lastError = err;
+        logger.warn('xAI Grok Vision API error:', (err as any)?.response?.data || (err as Error).message);
       }
     }
 
@@ -128,7 +128,7 @@ export class AiVisionService {
 
   private async callGroqVision(base64Image: string, apiKey: string): Promise<ScanImageResult | null> {
     const prompt = this.getVisionPrompt();
-    const model = env.GROQ_MODEL || 'openai/gpt-oss-120b';
+    const model = env.GROQ_MODEL || 'qwen/qwen3.8-27b';
 
     const imageUrl = base64Image.startsWith('data:') 
       ? base64Image 

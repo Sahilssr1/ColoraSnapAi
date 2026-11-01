@@ -7,6 +7,8 @@ interface AppLogoProps {
   size?: number | 'small' | 'medium' | 'large' | 'xlarge';
   showText?: boolean;
   showTagline?: boolean;
+  textColor?: string;
+  taglineColor?: string;
   style?: ViewStyle;
   imageStyle?: ImageStyle;
 }
@@ -15,6 +17,8 @@ export const AppLogo: React.FC<AppLogoProps> = ({
   size = 'medium',
   showText = false,
   showTagline = false,
+  textColor,
+  taglineColor,
   style,
   imageStyle,
 }) => {
@@ -76,11 +80,11 @@ export const AppLogo: React.FC<AppLogoProps> = ({
 
       {showText && (
         <View style={styles.textBlock}>
-          <Text style={[styles.appName, { color: theme.textPrimary }]}>
+          <Text style={[styles.appName, { color: textColor || theme.textPrimary }]}>
             SnapCalora <Text style={{ color: '#22C55E' }}>AI</Text>
           </Text>
           {showTagline && (
-            <Text style={[styles.tagline, { color: theme.textSecondary }]}>
+            <Text style={[styles.tagline, { color: taglineColor || theme.textSecondary }]}>
               {APP_CONFIG.tagline}
             </Text>
           )}
@@ -105,12 +109,15 @@ const styles = StyleSheet.create({
   },
   textBlock: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 14,
+    width: '100%',
   },
   appName: {
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
+    textAlign: 'center',
   },
   tagline: {
     fontSize: 14,

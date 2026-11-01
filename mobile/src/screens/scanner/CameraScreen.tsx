@@ -80,6 +80,7 @@ export const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
 
       const response = await apiClient.post('/scan/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 45000,
       });
 
       if (response.data.success) {

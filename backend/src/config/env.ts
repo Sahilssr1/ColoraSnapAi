@@ -22,7 +22,7 @@ const envSchema = z.object({
 
   // Groq Cloud (gsk_...)
   GROQ_API_KEY: z.string().optional(),
-  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
+  GROQ_MODEL: z.string().default('qwen/qwen3.8-27b'),
 
   // xAI Grok Vision (xai-...)
   GROK_API_KEY: z.string().optional(),

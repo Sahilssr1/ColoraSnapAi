@@ -32,9 +32,17 @@ export class BarcodeService {
       return { found: true, food: localFood, source: 'LOCAL_DB' };
     }
 
-    // 3. Query OpenFoodFacts API
+    // 3. Query OpenFoodFacts API (Open Source Global Database)
     try {
-      const offResult = await this.queryOpenFoodFacts(cleanBarcode);
+      let offResult = await this.queryOpenFoodFacts(cleanBarcode);
+
+      // UPC-A (12 digits) <-> EAN-13 (13 digits) zero-padding fallback
+      if (!offResult && cleanBarcode.length === 12) {
+        offResult = await this.queryOpenFoodFacts('0' + cleanBarcode);
+      } else if (!offResult && cleanBarcode.length === 13 && cleanBarcode.startsWith('0')) {
+        offResult = await this.queryOpenFoodFacts(cleanBarcode.slice(1));
+      }
+
       if (offResult) {
         const savedFood = await foodRepository.upsertByBarcode(cleanBarcode, offResult);
         await redisCache.set(cacheKey, savedFood, 86400);
@@ -65,13 +73,29 @@ export class BarcodeService {
   }
 
   private async queryOpenFoodFacts(barcode: string): Promise<any | null> {
-    const url = `${env.OPENFOODFACTS_BASE_URL}/product/${barcode}.json`;
-    const response = await axios.get(url, {
-      timeout: 5000,
-      headers: { 'User-Agent': 'CaloraAI-MobileApp - Version 1.0' },
-    });
+    // Try v2 endpoint first, then v0 fallback
+    const urls = [
+      `${env.OPENFOODFACTS_BASE_URL}/product/${barcode}.json`,
+      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+    ];
 
-    if (response.data?.status !== 1 || !response.data?.product) {
+    let product = null;
+    for (const url of urls) {
+      try {
+        const response = await axios.get(url, {
+          timeout: 6000,
+          headers: { 'User-Agent': 'SnapCaloraAI-Android-App - Version 1.0.7' },
+        });
+        if (response.data?.status === 1 && response.data?.product) {
+          product = response.data.product;
+          break;
+        }
+      } catch (err) {
+        // try next endpoint
+      }
+    }
+
+    if (!product) {
       return null;
     }
 
