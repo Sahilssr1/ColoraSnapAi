@@ -11,11 +11,11 @@
   </h1>
 
   <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.demolab.com?font=Plus+Jakarta+Sans&weight=700&size=20&duration=3000&pause=1000&color=22C55E&center=true&vCenter=true&multiline=false&width=560&height=40&lines=Snap.+Scan.+Track.+Eat+Smarter.;Groq+LPU+Multimodal+Vision+in+1.6s;Open-Source+Barcode+Scanning+(Open+Food+Facts);Apple+Health-Style+Concentric+Telemetry+Rings;Instant+Offline+Launch+in+under+350ms" alt="Typing SVG" />
+    <img src="https://readme-typing-svg.demolab.com?font=Plus+Jakarta+Sans&weight=700&size=20&duration=3000&pause=1000&color=22C55E&center=true&vCenter=true&multiline=false&width=560&height=40&lines=Snap.+Scan.+Track.+Eat+Smarter.;Groq+LPU+Multimodal+Vision+in+1.6s;Live+Outdoor+Running+%26+Sports+Telemetry;Open-Source+Barcode+Scanning+(Open+Food+Facts);Apple+Health-Style+Concentric+Rings;Instant+Offline+Launch+in+under+350ms" alt="Typing SVG" />
   </a>
 
   <p align="center">
-    <strong>Production-grade, offline-first mobile health ecosystem combining high-speed LPU Vision AI with clinical nutrition intelligence.</strong>
+    <strong>Production-grade, offline-first mobile health ecosystem combining high-speed LPU Vision AI with live sports telemetry and clinical nutrition intelligence.</strong>
   </p>
 
   <p align="center">
@@ -29,6 +29,43 @@
 
   <br />
 
+</div>
+
+---
+
+## 📸 The Visual Experience
+
+<div align="center">
+  <table width="100%">
+    <tr>
+      <td width="50%" align="center">
+        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80" width="100%" height="240" style="object-fit: cover; border-radius: 16px;" alt="Healthy Nutrition & Visual Food Recognition" />
+        <br /><br />
+        <b>🥗 Visual AI Food Recognition</b>
+        <p><i>Multimodal LPU vision decomposes whole meals, calculates 30+ micronutrients, and estimates portion weights in 1.6 seconds.</i></p>
+      </td>
+      <td width="50%" align="center">
+        <img src="https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&auto=format&fit=crop&q=80" width="100%" height="240" style="object-fit: cover; border-radius: 16px;" alt="Sports, Fitness & Outdoor Running" />
+        <br /><br />
+        <b>🏃 Sports, Running & Active Telemetry</b>
+        <p><i>Continuous native hardware step detection, live walk/run session tracking, active calorie burn, and distance estimates.</i></p>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" align="center">
+        <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80" width="100%" height="240" style="object-fit: cover; border-radius: 16px;" alt="Packaged Foods & Barcode Scanning" />
+        <br /><br />
+        <b>🏷️ Open-Source Barcode Scanner</b>
+        <p><i>Over 3,000,000 global products scanned in under 300ms using Open Food Facts with automatic offline client fallback.</i></p>
+      </td>
+      <td width="50%" align="center">
+        <img src="https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=800&auto=format&fit=crop&q=80" width="100%" height="240" style="object-fit: cover; border-radius: 16px;" alt="Sleep Recovery & Health Vitals" />
+        <br /><br />
+        <b>🌙 Sleep Recovery & Vitality Metrics</b>
+        <p><i>Comprehensive wellness with clinical sleep recovery scoring (0–100), hydration logging, and daily RDA tracking.</i></p>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ---
@@ -64,15 +101,17 @@ SnapCalora AI is engineered with an Apple Health-inspired aesthetic with dynamic
 <table width="100%">
   <tr>
     <td width="50%" valign="top">
+      <img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&auto=format&fit=crop&q=80" width="100%" height="160" style="object-fit: cover; border-radius: 12px; margin-bottom: 8px;" alt="Healthy Food" />
       <h3>📸 1. Visual AI Food Recognition</h3>
       <ul>
         <li><b>Ultra-Fast Groq Inference</b>: Uses Groq's high-throughput LPU cloud with <code>qwen/qwen3.8-27b</code> for sub-2s meal detection.</li>
-        <li><b>Multi-Component Plate Parsing</b>: Segments diverse plates into distinct ingredients (e.g. grilled salmon, brown rice, asparagus, lemon wedge).</li>
+        <li><b>Multi-Component Plate Parsing</b>: Segments diverse plates into distinct ingredients (e.g. grilled salmon, brown rice, asparagus, avocado).</li>
         <li><b>30+ Nutrient Panel</b>: Macro breakdown (Protein, Carbs, Fat) plus full micro-nutrients (Vitamins A, B, C, D, E, K, Iron, Zinc, Calcium, Potassium).</li>
         <li><b>Interactive Portions</b>: Instant 0.5×, 1.0×, 1.5×, 2.0× sliders with reactive recalculations.</li>
       </ul>
     </td>
     <td width="50%" valign="top">
+      <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80" width="100%" height="160" style="object-fit: cover; border-radius: 12px; margin-bottom: 8px;" alt="Grocery Store Barcodes" />
       <h3>🔍 2. Open-Source Barcode Scanner</h3>
       <ul>
         <li><b>Open Food Facts Integration</b>: Native connection to the world's largest open-source database (3,000,000+ products).</li>
@@ -84,6 +123,7 @@ SnapCalora AI is engineered with an Apple Health-inspired aesthetic with dynamic
   </tr>
   <tr>
     <td width="50%" valign="top">
+      <img src="https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=800&auto=format&fit=crop&q=80" width="100%" height="160" style="object-fit: cover; border-radius: 12px; margin-bottom: 8px;" alt="Running & Fitness" />
       <h3>🍏 3. Apple Health Concentric Rings</h3>
       <ul>
         <li><b>Live Hardware Step Sensor</b>: Queries native device accelerometer/pedometer with persistent Android foreground service.</li>
@@ -93,6 +133,7 @@ SnapCalora AI is engineered with an Apple Health-inspired aesthetic with dynamic
       </ul>
     </td>
     <td width="50%" valign="top">
+      <img src="https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=800&auto=format&fit=crop&q=80" width="100%" height="160" style="object-fit: cover; border-radius: 12px; margin-bottom: 8px;" alt="Rest & Wellness" />
       <h3>⚡ 4. Instant Launch & Resilient Sessions</h3>
       <ul>
         <li><b>Sub-350ms Launch</b>: Eliminates splash delays and sleeping-server stalls via local <code>AsyncStorage</code> caching.</li>
@@ -113,7 +154,7 @@ flowchart TD
     subgraph MobileClient ["📱 Mobile Client (React Native + Expo SDK 51)"]
         Camera["📷 Camera & Barcode Scanner"]
         Rings["🍏 Concentric Progress Rings"]
-        Pedometer["👟 Native Step Sensor (Foreground)"]
+        Pedometer["👟 Native Step Sensor (Foreground Service)"]
         OfflineCache[("💾 Local Storage (calora_user_profile)")]
     end
 
@@ -143,42 +184,15 @@ flowchart TD
 
 ---
 
-## 🛠️ Technology Stack Breakdown
+## 💻 Technology Stack
 
-```
-SnapCalora/
-├── backend/                       # REST API Backend Service
-│   ├── prisma/                    # Schema models, PostgreSQL migrations
-│   ├── src/
-│   │   ├── config/                # Environment, Redis, Swagger OpenAPI
-│   │   ├── controllers/           # Auth, Scan, Meal, User controllers
-│   │   ├── middlewares/           # JWT verification, Rate limiter, Error handler
-│   │   ├── repositories/          # Prisma database repository pattern
-│   │   ├── routes/                # Express REST endpoints
-│   │   ├── services/              # AiVisionService (Groq), BarcodeService (OFF)
-│   │   └── validators/            # Zod validation schemas
-│   └── package.json
-│
-├── mobile/                        # React Native Mobile App (Expo SDK 51)
-│   ├── assets/                    # Icons, adaptive icons, splash screens
-│   ├── android/                   # Native Android gradle and manifests
-│   ├── src/
-│   │   ├── api/                   # Axios client & TanStack Query hooks
-│   │   ├── components/            # Concentric Rings, AppleHealthHeader, AppLogo
-│   │   ├── hooks/                 # usePedometer (live sensor polling)
-│   │   ├── navigation/            # RootStack & TabNavigator (React Navigation v6)
-│   │   ├── redux/                 # Redux Toolkit store & slices
-│   │   ├── screens/               # Auth, Scanner, Tracker, Profile
-│   │   ├── theme/                 # Dark (#111827) and Light (#F9FAFB) palettes
-│   │   └── types/                 # Shared TypeScript models
-│   ├── app.json                   # Expo manifest configuration
-│   └── package.json
-│
-├── assets/                        # High-resolution README assets
-│   └── logo.png                   # Official SnapCalora AI brand emblem
-├── docker-compose.yml             # Local PostgreSQL & Redis orchestration
-└── README.md
-```
+| Layer | Technologies |
+| :--- | :--- |
+| **Mobile Client** | React Native 0.74, Expo SDK 51, TypeScript, React Navigation v6, Redux Toolkit, React Native Reanimated, Expo Camera, Expo Linear Gradient, Lucide Icons |
+| **Backend API** | Node.js (v20+), Express.js, TypeScript, Prisma ORM, Neon Serverless PostgreSQL, Redis Cache, Zod, Swagger OpenAPI 3.0 |
+| **AI Vision Engine** | Groq Cloud LPU Vision (`qwen/qwen3.8-27b`), xAI Grok Vision (`grok-2-vision-1212`), Google Gemini Flash |
+| **Food Databases** | Open Food Facts (Open Source Global Database), USDA FoodData Central |
+| **Infrastructure** | Docker, Render Cloud Hosting, Expo Application Services (EAS Cloud Build) |
 
 ---
 
