@@ -31,7 +31,7 @@ export const AppleHealthHeader: React.FC<AppleHealthHeaderProps> = memo(({
   const insets = useSafeAreaInsets();
   const { theme, isDark, themeMode, setTheme } = useTheme();
   const androidBarHeight = RNStatusBar.currentHeight ?? 24;
-  const topInset = Platform.OS === 'android' ? (insets.top > 0 ? insets.top : androidBarHeight) : Math.max(insets.top, 8);
+  const topInset = Platform.OS === 'android' ? Math.max(androidBarHeight, insets.top) : Math.max(insets.top, 8);
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(' ');
@@ -146,13 +146,13 @@ const styles = StyleSheet.create({
   },
   gradientHeader: {
     position: 'absolute',
-    top: -50,
-    left: -20,
-    right: -20,
-    height: 190,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 160,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
   },
   topRow: {
     flexDirection: 'row',

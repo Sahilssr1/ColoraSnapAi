@@ -10,6 +10,9 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableMap
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Old-architecture native module (this project has newArchEnabled=false).
@@ -182,8 +185,11 @@ class StepTrackerModule(reactContext: ReactApplicationContext) :
         } else {
             accumulatedMs
         }
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val baselineDate = prefs.getString(StepTrackerService.KEY_BASELINE_DATE, null)
+        val todaySteps = if (baselineDate == today) prefs.getLong(StepTrackerService.KEY_TODAY_STEPS, 0L) else 0L
         val map: WritableMap = Arguments.createMap()
-        map.putDouble("todaySteps", prefs.getLong(StepTrackerService.KEY_TODAY_STEPS, 0L).toDouble())
+        map.putDouble("todaySteps", todaySteps.toDouble())
         map.putDouble("sessionSteps", prefs.getLong(StepTrackerService.KEY_SESSION_STEPS, 0L).toDouble())
         map.putBoolean("sessionActive", active)
         map.putBoolean("sessionPaused", paused)

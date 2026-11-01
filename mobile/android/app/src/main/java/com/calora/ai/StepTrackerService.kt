@@ -80,7 +80,14 @@ class StepTrackerService : Service(), SensorEventListener {
         // 2-arg startForeground uses the foregroundServiceType declared in
         // the manifest ("health") on Android 14+, which is what requires
         // the FOREGROUND_SERVICE_HEALTH permission.
-        startForeground(NOTIFICATION_ID, buildNotification(0, 0, null))
+        val prefs = prefs()
+        val today = todayString()
+        val savedDate = prefs.getString(KEY_BASELINE_DATE, null)
+        val initialTodaySteps = if (savedDate == today) prefs.getLong(KEY_TODAY_STEPS, 0L) else 0L
+        val sessionSteps = prefs.getLong(KEY_SESSION_STEPS, 0L)
+        val sessionType = prefs.getString(KEY_SESSION_TYPE, null)
+        val sessionActive = prefs.getBoolean(KEY_SESSION_ACTIVE, false)
+        startForeground(NOTIFICATION_ID, buildNotification(initialTodaySteps, sessionSteps, if (sessionActive) sessionType else null))
         val sensor = stepSensor
         if (sensor != null) {
             // SENSOR_DELAY_NORMAL is enough for step counting and is the
@@ -108,12 +115,13 @@ class StepTrackerService : Service(), SensorEventListener {
 
         // Day rollover: the hardware counter is since boot, so "today" is
         // sensor value minus the value at the start of today.
+        var baseline = prefs.getLong(KEY_BASELINE, sensorValue)
         if (prefs.getString(KEY_BASELINE_DATE, null) != today) {
+            baseline = sensorValue
             editor.putString(KEY_BASELINE_DATE, today)
-            editor.putLong(KEY_BASELINE, sensorValue)
+            editor.putLong(KEY_BASELINE, baseline)
             editor.putLong(KEY_TODAY_STEPS, 0L)
         }
-        val baseline = prefs.getLong(KEY_BASELINE, sensorValue)
         // Sensor reboot can reset the counter to a lower value; never let
         // "today" go backwards because of that.
         val todaySteps = maxOf(0L, sensorValue - baseline)

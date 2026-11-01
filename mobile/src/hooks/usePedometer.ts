@@ -86,7 +86,7 @@ export const usePedometer = (initialSteps: number = 0) => {
         AsyncStorage.setItem(STORAGE_KEY_DATE, todayStr).catch(() => {});
 
         const total = Math.max(status.todaySteps, initialStepsRef.current);
-        if (total > lastSyncCountRef.current && total - lastSyncCountRef.current >= 3) {
+        if (total > lastSyncCountRef.current) {
           scheduleDbSync(total);
         }
       }
